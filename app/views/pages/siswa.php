@@ -292,8 +292,11 @@ $getSortLink = function($column, $label) use ($searchQuery, $sortBy, $sortDir, $
 $where = '';
 $params = [];
 if ($searchQuery !== '') {
-    $where = 'WHERE nama LIKE :search OR nisn LIKE :search OR nis LIKE :search';
-    $params['search'] = '%' . $searchQuery . '%';
+    $where = 'WHERE nama LIKE :search1 OR nisn LIKE :search2 OR nis LIKE :search3';
+    $searchTerm = '%' . $searchQuery . '%';
+    $params['search1'] = $searchTerm;
+    $params['search2'] = $searchTerm;
+    $params['search3'] = $searchTerm;
 }
 
 $countStmt = db()->prepare("SELECT COUNT(*) as total FROM siswa {$where}");
