@@ -63,6 +63,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.topbar > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar > div:first-child {
+  text-align: left;
+}
+
+.topbar > div:nth-child(2) {
+  text-align: center;
+}
+
+.topbar > div:last-child {
+  text-align: right;
 }
 
 .profile-toggle {

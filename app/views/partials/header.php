@@ -70,8 +70,8 @@ $isAdmin = ($user['role'] ?? '') === 'admin';
                     <div class="fw-semibold fs-5">TA: <?= e($set['tahun_ajaran']) ?></div>
                     <small class="text-secondary">Semester <?= e($set['semester_aktif']) ?></small>
                 </div>
-                <div class="d-flex justify-content-end">
-                    <div class="dropdown">
+                <div>
+                    <div class="dropdown d-inline-block">
                         <button class="btn btn-light border dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
                             <?= e($user['nama_lengkap']) ?>
