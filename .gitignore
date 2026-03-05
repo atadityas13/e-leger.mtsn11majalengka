@@ -4,3 +4,5 @@
 !/public/uploads/.gitkeep
 /storage/exports/*
 !/storage/exports/.gitkeep
+/database/backups/*
+!/database/backups/.gitkeep

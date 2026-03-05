@@ -3,7 +3,7 @@ $user = current_user();
 $flash = get_flash();
 $page = $_GET['page'] ?? 'dashboard';
 $isAdmin = ($user['role'] ?? '') === 'admin';
-$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
+$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tools'], true);
 ?>
 <!doctype html>
 <html lang="id">
@@ -68,6 +68,9 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
                         </a>
                         <a class="sidebar-link sidebar-sub <?= $page === 'semester-control' ? 'active' : '' ?>" href="index.php?page=semester-control">
                             <i class="bi bi-calendar2-week"></i> Semester
+                        </a>
+                        <a class="sidebar-link sidebar-sub <?= $page === 'db-tools' ? 'active' : '' ?>" href="index.php?page=db-tools">
+                            <i class="bi bi-database-gear"></i> Database Tools
                         </a>
                     </div>
                 <?php endif; ?>

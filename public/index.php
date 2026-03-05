@@ -43,6 +43,10 @@ switch ($page) {
         require_role(['admin']);
         require dirname(__DIR__) . '/app/views/pages/semester_control.php';
         break;
+    case 'db-tools':
+        require_role(['admin']);
+        require dirname(__DIR__) . '/app/views/pages/db_tools.php';
+        break;
     case 'kelulusan':
         require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/kelulusan.php';
