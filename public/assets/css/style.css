@@ -77,22 +77,20 @@ body {
   margin-top: 0.2rem;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+}
+
 .main-content {
   flex: 1;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.app-footer {
-  margin-top: auto;
-  border-top: 1px solid #dee2e6;
-  background: transparent;
-}
-
-.app-footer-inner {
-  padding: 0.75rem 0.25rem;
 }
 
 .topbar {
@@ -203,9 +201,5 @@ body {
 
   .main-content {
     padding: 1rem;
-  }
-
-  .app-footer-inner {
-    padding: 0.65rem 0;
   }
 }

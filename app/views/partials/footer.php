@@ -33,19 +33,6 @@
  * ========================================================
  */
 ?>
-<footer class="app-footer">
-    <div class="app-footer-inner">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small text-secondary">
-            <div>
-                © <?= date('Y') ?> <strong class="text-dark">MTsN 11 Majalengka</strong>
-            </div>
-            <div>
-                e-Leger v1.0.0 • Developed by <span class="text-dark">A.T. Aditya</span>
-            </div>
-        </div>
-    </div>
-</footer>
-
     </main>
 </div>
 
