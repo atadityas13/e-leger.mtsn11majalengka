@@ -7,17 +7,20 @@ $setting = setting_akademik();
 $semesterAktif = strtoupper($setting['semester_aktif']);
 $targetRapor = semester_upload_target($semesterAktif);
 
-function normalize_header(string $value): string
-{
-    $value = strtoupper(trim($value));
-    $value = str_replace(['.', '-', '/', "'", '’'], ' ', $value);
-    $value = preg_replace('/\s+/', ' ', $value);
-    return trim($value);
+if (!function_exists('normalize_header')) {
+    function normalize_header(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        $value = str_replace(['.', '-', '/', "'", '''], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+        return trim($value);
+    }
 }
 
-function download_template_excel(string $filename, array $headers): void
-{
-    $spreadsheet = new Spreadsheet();
+if (!function_exists('download_template_excel')) {
+    function download_template_excel(string $filename, array $headers): void
+    {
+        $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Template Nilai');
 
@@ -59,6 +62,7 @@ function download_template_excel(string $filename, array $headers): void
     $writer = new Xlsx($spreadsheet);
     $writer->save('php://output');
     exit;
+    }
 }
 
 $mapelRows = db()->query('SELECT id, nama_mapel FROM mapel')->fetchAll();

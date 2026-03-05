@@ -4,77 +4,83 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-function normalize_siswa_header(string $value): string
-{
-    $value = strtoupper(trim($value));
-    $value = str_replace(['.', '-', '/', '_'], ' ', $value);
-    $value = preg_replace('/\s+/', ' ', $value);
-    return trim($value);
+if (!function_exists('normalize_siswa_header')) {
+    function normalize_siswa_header(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        $value = str_replace(['.', '-', '/', '_'], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+        return trim($value);
+    }
 }
 
-function siswa_excel_date_to_mysql($value): ?string
-{
-    if ($value === null || trim((string) $value) === '') {
-        return null;
-    }
-
-    if (is_numeric($value)) {
-        try {
-            return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
-        } catch (Throwable $e) {
+if (!function_exists('siswa_excel_date_to_mysql')) {
+    function siswa_excel_date_to_mysql($value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') {
             return null;
         }
-    }
 
-    $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y'];
-    $value = trim((string) $value);
-    foreach ($formats as $format) {
-        $date = DateTime::createFromFormat($format, $value);
-        if ($date instanceof DateTime) {
-            return $date->format('Y-m-d');
+        if (is_numeric($value)) {
+            try {
+                return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
+            } catch (Throwable $e) {
+                return null;
+            }
         }
-    }
 
-    $timestamp = strtotime($value);
-    if ($timestamp !== false) {
-        return date('Y-m-d', $timestamp);
-    }
+        $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y'];
+        $value = trim((string) $value);
+        foreach ($formats as $format) {
+            $date = DateTime::createFromFormat($format, $value);
+            if ($date instanceof DateTime) {
+                return $date->format('Y-m-d');
+            }
+        }
 
-    return null;
+        $timestamp = strtotime($value);
+        if ($timestamp !== false) {
+            return date('Y-m-d', $timestamp);
+        }
+
+        return null;
+    }
 }
 
-function download_template_siswa(): void
-{
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Template Siswa');
+if (!function_exists('download_template_siswa')) {
+    function download_template_siswa(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Siswa');
 
-    $headers = ['NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Current Semester', 'Status Siswa'];
-    $sheet->fromArray($headers, null, 'A1');
-    $sheet->fromArray(['0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', '1', 'Aktif'], null, 'A2');
+        $headers = ['NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Current Semester', 'Status Siswa'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->fromArray(['0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', '1', 'Aktif'], null, 'A2');
 
-    for ($index = 1; $index <= count($headers); $index++) {
-        $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
+        for ($index = 1; $index <= count($headers); $index++) {
+            $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
+        }
+
+        $guideSheet = $spreadsheet->createSheet();
+        $guideSheet->setTitle('Petunjuk');
+        $guideSheet->fromArray([
+            ['PETUNJUK TEMPLATE SISWA'],
+            ['1. Jangan ubah nama header pada baris pertama.'],
+            ['2. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
+            ['3. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
+            ['4. Current Semester boleh 1-5. Jika kosong/invalid, otomatis jadi 1.'],
+            ['5. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
+            ['6. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
+        ], null, 'A1');
+        $guideSheet->getColumnDimension('A')->setWidth(120);
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="template_import_siswa.xlsx"');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
     }
-
-    $guideSheet = $spreadsheet->createSheet();
-    $guideSheet->setTitle('Petunjuk');
-    $guideSheet->fromArray([
-        ['PETUNJUK TEMPLATE SISWA'],
-        ['1. Jangan ubah nama header pada baris pertama.'],
-        ['2. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
-        ['3. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
-        ['4. Current Semester boleh 1-5. Jika kosong/invalid, otomatis jadi 1.'],
-        ['5. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
-        ['6. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
-    ], null, 'A1');
-    $guideSheet->getColumnDimension('A')->setWidth(120);
-
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="template_import_siswa.xlsx"');
-    $writer = new Xlsx($spreadsheet);
-    $writer->save('php://output');
-    exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
