@@ -34,6 +34,7 @@ switch ($page) {
         require_role(['admin']);
         require dirname(__DIR__) . '/app/views/pages/siswa.php';
         break;
+    case 'data-nilai':
     case 'nilai-import':
         require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/nilai_import.php';
@@ -46,6 +47,11 @@ switch ($page) {
         require_role(['admin']);
         require dirname(__DIR__) . '/app/views/pages/kelulusan.php';
         break;
+    case 'alumni':
+        require_role(['admin', 'kurikulum']);
+        require dirname(__DIR__) . '/app/views/pages/alumni.php';
+        break;
+    case 'ekspor-cetak':
     case 'laporan':
         require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/laporan.php';

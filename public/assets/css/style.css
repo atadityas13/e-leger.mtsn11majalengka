@@ -53,6 +53,30 @@ body {
   font-weight: 600;
 }
 
+.sidebar-sub {
+  margin-left: 0.75rem;
+  padding-left: 0.95rem;
+  font-size: 0.95rem;
+}
+
+.sidebar-toggle {
+  justify-content: space-between;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-toggle[aria-expanded="true"] .sidebar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+#pengaturanMenu {
+  margin-top: 0.2rem;
+}
+
 .main-content {
   flex: 1;
   padding: 1.25rem;

@@ -3,6 +3,7 @@ $user = current_user();
 $flash = get_flash();
 $page = $_GET['page'] ?? 'dashboard';
 $isAdmin = ($user['role'] ?? '') === 'admin';
+$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
 ?>
 <!doctype html>
 <html lang="id">
@@ -29,31 +30,47 @@ $isAdmin = ($user['role'] ?? '') === 'admin';
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
                 <?php if ($isAdmin): ?>
-                    <a class="sidebar-link <?= $page === 'users' ? 'active' : '' ?>" href="index.php?page=users">
-                        <i class="bi bi-people"></i> Data User
-                    </a>
-                    <a class="sidebar-link <?= $page === 'mapel' ? 'active' : '' ?>" href="index.php?page=mapel">
-                        <i class="bi bi-journal-bookmark"></i> Data Mapel
-                    </a>
                     <a class="sidebar-link <?= $page === 'siswa' ? 'active' : '' ?>" href="index.php?page=siswa">
                         <i class="bi bi-person-vcard"></i> Data Siswa
                     </a>
                 <?php endif; ?>
-
-                <a class="sidebar-link <?= $page === 'nilai-import' ? 'active' : '' ?>" href="index.php?page=nilai-import">
-                    <i class="bi bi-file-earmark-spreadsheet"></i> Olah Nilai
+                <a class="sidebar-link <?= in_array($page, ['data-nilai', 'nilai-import'], true) ? 'active' : '' ?>" href="index.php?page=data-nilai">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Data Nilai
                 </a>
                 <?php if ($isAdmin): ?>
-                    <a class="sidebar-link <?= $page === 'semester-control' ? 'active' : '' ?>" href="index.php?page=semester-control">
-                        <i class="bi bi-calendar2-check"></i> Kontrol Semester
-                    </a>
                     <a class="sidebar-link <?= $page === 'kelulusan' ? 'active' : '' ?>" href="index.php?page=kelulusan">
                         <i class="bi bi-mortarboard"></i> Kelulusan
                     </a>
                 <?php endif; ?>
-                <a class="sidebar-link <?= $page === 'laporan' ? 'active' : '' ?>" href="index.php?page=laporan">
-                    <i class="bi bi-printer"></i> Laporan & Cetak
+                <a class="sidebar-link <?= $page === 'alumni' ? 'active' : '' ?>" href="index.php?page=alumni">
+                    <i class="bi bi-people-fill"></i> Alumni
                 </a>
+                <a class="sidebar-link <?= in_array($page, ['ekspor-cetak', 'laporan'], true) ? 'active' : '' ?>" href="index.php?page=ekspor-cetak">
+                    <i class="bi bi-printer"></i> Ekspor dan Cetak
+                </a>
+
+                <?php if ($isAdmin): ?>
+                    <button class="sidebar-link sidebar-toggle w-100 border-0 <?= $isSettingPage ? 'active' : '' ?>"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#pengaturanMenu"
+                            aria-expanded="<?= $isSettingPage ? 'true' : 'false' ?>"
+                            aria-controls="pengaturanMenu">
+                        <span><i class="bi bi-gear me-2"></i>Pengaturan</span>
+                        <i class="bi bi-chevron-down sidebar-toggle-icon"></i>
+                    </button>
+                    <div id="pengaturanMenu" class="collapse <?= $isSettingPage ? 'show' : '' ?>">
+                        <a class="sidebar-link sidebar-sub <?= $page === 'mapel' ? 'active' : '' ?>" href="index.php?page=mapel">
+                            <i class="bi bi-journal-bookmark"></i> Mapel
+                        </a>
+                        <a class="sidebar-link sidebar-sub <?= $page === 'semester-control' ? 'active' : '' ?>" href="index.php?page=semester-control">
+                            <i class="bi bi-calendar2-week"></i> Semester
+                        </a>
+                        <a class="sidebar-link sidebar-sub <?= $page === 'users' ? 'active' : '' ?>" href="index.php?page=users">
+                            <i class="bi bi-people"></i> User
+                        </a>
+                    </div>
+                <?php endif; ?>
             </nav>
         </aside>
     <?php endif; ?>
