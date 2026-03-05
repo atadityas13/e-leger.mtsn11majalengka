@@ -62,17 +62,17 @@ $isAdmin = ($user['role'] ?? '') === 'admin';
         <?php if ($user): ?>
             <header class="topbar card shadow-sm border-0 mb-3">
                 <?php $set = setting_akademik(); ?>
-                <div>
-                    <div class="fw-semibold">Sistem e-Leger</div>
-                    <small class="text-secondary">Kelola data nilai, semester, dan kelulusan</small>
+                <div class="topbar-left">
+                    <div class="fw-semibold text-white">Sistem e-Leger</div>
+                    <small class="text-white-50">Kelola data nilai, semester, dan kelulusan</small>
                 </div>
-                <div class="text-center">
-                    <div class="fw-semibold fs-5">TA: <?= e($set['tahun_ajaran']) ?></div>
-                    <small class="text-secondary">Semester <?= e($set['semester_aktif']) ?></small>
+                <div class="topbar-center">
+                    <div class="fw-semibold fs-5 text-white">TA: <?= e($set['tahun_ajaran']) ?></div>
+                    <small class="text-white-50">Semester <?= e($set['semester_aktif']) ?></small>
                 </div>
-                <div>
-                    <div class="dropdown d-inline-block">
-                        <button class="btn btn-light border dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="topbar-right">
+                    <div class="dropdown">
+                        <button class="btn btn-light dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
                             <?= e($user['nama_lengkap']) ?>
                         </button>

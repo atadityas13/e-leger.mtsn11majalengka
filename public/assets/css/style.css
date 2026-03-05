@@ -59,28 +59,26 @@ body {
 }
 
 .topbar {
-  padding: 0.9rem 1rem;
-  display: flex;
-  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   gap: 1rem;
+  background: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
 }
 
-.topbar > div {
-  flex: 1;
-  min-width: 0;
-}
-
-.topbar > div:first-child {
+.topbar-left {
   text-align: left;
 }
 
-.topbar > div:nth-child(2) {
+.topbar-center {
   text-align: center;
 }
 
-.topbar > div:last-child {
+.topbar-right {
   text-align: right;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .profile-toggle {
@@ -151,8 +149,18 @@ body {
   }
 
   .topbar {
-    flex-direction: column;
-    gap: 0.6rem;
-    align-items: flex-start;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    text-align: center !important;
+  }
+  
+  .topbar-left,
+  .topbar-center,
+  .topbar-right {
+    text-align: center !important;
+  }
+  
+  .topbar-right {
+    justify-content: center;
   }
 }
