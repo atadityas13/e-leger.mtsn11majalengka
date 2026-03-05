@@ -110,7 +110,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
 
             <div class="sidebar-footer small">
                 <div>© <?= date('Y') ?> MTsN 11 Majalengka</div>
-                <div>e-Leger v1.0.0 • Developed by A.T. Aditya</div>
+                <div>• e-Leger v1.0.0 •<br>Developed by A.T. Aditya</div>
             </div>
         </aside>
     <?php endif; ?>
