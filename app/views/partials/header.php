@@ -66,29 +66,34 @@ $isAdmin = ($user['role'] ?? '') === 'admin';
                     <div class="fw-semibold">Sistem e-Leger</div>
                     <small class="text-secondary">Kelola data nilai, semester, dan kelulusan</small>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-light border dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-1"></i>
-                        <?= e($user['nama_lengkap']) ?>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li class="px-3 pt-2 pb-1">
-                            <div class="fw-semibold mb-1"><?= e($user['nama_lengkap']) ?></div>
-                            <div class="small text-secondary">Role: <?= e(strtoupper($user['role'])) ?></div>
-                            <div class="small text-secondary">TA: <?= e($set['tahun_ajaran']) ?> (<?= e($set['semester_aktif']) ?>)</div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="index.php?page=profile">
-                                <i class="bi bi-person-gear me-2"></i>Profile
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item text-danger" href="index.php?page=logout" data-confirm="Anda yakin ingin keluar dari aplikasi?" data-confirm-title="Konfirmasi Keluar">
-                                <i class="bi bi-box-arrow-right me-2"></i>Keluar
-                            </a>
-                        </li>
-                    </ul>
+                <div class="text-center">
+                    <div class="fw-semibold fs-5">TA: <?= e($set['tahun_ajaran']) ?></div>
+                    <small class="text-secondary">Semester <?= e($set['semester_aktif']) ?></small>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <div class="dropdown">
+                        <button class="btn btn-light border dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i>
+                            <?= e($user['nama_lengkap']) ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li class="px-3 pt-2 pb-1">
+                                <div class="fw-semibold mb-1"><?= e($user['nama_lengkap']) ?></div>
+                                <div class="small text-secondary">Role: <?= e(strtoupper($user['role'])) ?></div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="index.php?page=profile">
+                                    <i class="bi bi-person-gear me-2"></i>Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="index.php?page=logout" data-confirm="Anda yakin ingin keluar dari aplikasi?" data-confirm-title="Konfirmasi Keluar">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Keluar
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </header>
         <?php endif; ?>
