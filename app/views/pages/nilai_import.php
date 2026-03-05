@@ -278,12 +278,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('index.php?page=data-nilai');
 }
 
-$monitorSemester = strtoupper(trim($_GET['semester_view'] ?? '1'));
+$monitorSemesterOptions = array_map('strval', semester_upload_target($semesterAktif));
+if ($semesterAktif === 'GENAP') {
+    $monitorSemesterOptions[] = 'UAM';
+}
+$defaultMonitorSemester = $monitorSemesterOptions[0] ?? '1';
+
+$monitorSemester = strtoupper(trim($_GET['semester_view'] ?? $defaultMonitorSemester));
 $monitorStatus = trim($_GET['status_upload'] ?? 'all');
 $monitorStatus = in_array($monitorStatus, ['all', 'uploaded', 'not_uploaded'], true) ? $monitorStatus : 'all';
 
-if (!in_array($monitorSemester, ['1', '2', '3', '4', '5', 'UAM'], true)) {
-    $monitorSemester = '1';
+if (!in_array($monitorSemester, $monitorSemesterOptions, true)) {
+    $monitorSemester = $defaultMonitorSemester;
 }
 
 $mapelCount = (int) (db()->query('SELECT COUNT(*) c FROM mapel')->fetch()['c'] ?? 0);
@@ -341,6 +347,39 @@ foreach ($students as $student) {
     ];
 }
 
+// Pencarian monitoring
+$monitorSearch = trim($_GET['search_monitoring'] ?? '');
+if ($monitorSearch !== '') {
+    $rowsMonitor = array_filter($rowsMonitor, function($row) use ($monitorSearch) {
+        $search = strtolower($monitorSearch);
+        return strpos(strtolower($row['nama']), $search) !== false ||
+               strpos(strtolower($row['nisn']), $search) !== false ||
+               strpos(strtolower($row['nis']), $search) !== false;
+    });
+}
+
+// Sorting monitoring
+$monitorSortBy = $_GET['sort_by_monitoring'] ?? 'nama';
+$monitorSortBy = in_array($monitorSortBy, ['nama', 'current_semester', 'status_label'], true) ? $monitorSortBy : 'nama';
+$monitorSortDir = strtoupper($_GET['sort_dir_monitoring'] ?? 'ASC');
+$monitorSortDir = in_array($monitorSortDir, ['ASC', 'DESC'], true) ? $monitorSortDir : 'ASC';
+uasort($rowsMonitor, function($a, $b) use ($monitorSortBy, $monitorSortDir) {
+    $aVal = $a[$monitorSortBy] ?? '';
+    $bVal = $b[$monitorSortBy] ?? '';
+    $result = strnatcmp((string)$aVal, (string)$bVal);
+    return $monitorSortDir === 'DESC' ? -$result : $result;
+});
+
+// Pagination monitoring
+$monitorPerPage = (int) ($_GET['per_page_monitoring'] ?? 20);
+$monitorPerPage = in_array($monitorPerPage, [20, 30, 50, 100, 999999], true) ? $monitorPerPage : 20;
+$monitorPage = max(1, (int) ($_GET['page_monitoring'] ?? 1));
+$totalMonitorRecords = count($rowsMonitor);
+$totalMonitorPages = $monitorPerPage >= 999999 ? 1 : ceil($totalMonitorRecords / $monitorPerPage);
+$monitorPage = min($monitorPage, max(1, $totalMonitorPages));
+$monitorOffset = ($monitorPage - 1) * $monitorPerPage;
+$rowsMonitorPaginated = array_slice($rowsMonitor, $monitorOffset, $monitorPerPage);
+
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
@@ -358,36 +397,57 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-3">
         <h3 class="mb-1">Monitoring Upload Nilai (TA <?= e($setting['tahun_ajaran']) ?>)</h3>
-        <p class="text-secondary mb-0">Filter semester 1-5/UAM serta status sudah terupload atau belum terupload.</p>
+        <p class="text-secondary mb-0">Filter semester <?= e(implode('/', $monitorSemesterOptions)) ?> serta status sudah terupload atau belum terupload.</p>
     </div>
     <div class="card-body">
-        <form method="get" class="row g-3 align-items-end mb-3">
+        <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="page" value="data-nilai">
+            <input type="hidden" name="semester_view" value="<?= e($monitorSemester) ?>">
+            <input type="hidden" name="status_upload" value="<?= e($monitorStatus) ?>">
             <div class="col-md-3">
-                <label class="form-label">Semester</label>
-                <select name="semester_view" class="form-select">
-                    <?php foreach (['1', '2', '3', '4', '5', 'UAM'] as $optionSemester): ?>
-                        <option value="<?= e($optionSemester) ?>" <?= $monitorSemester === $optionSemester ? 'selected' : '' ?>>
-                            <?= e($optionSemester) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <input type="text" name="search_monitoring" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($monitorSearch) ?>">
             </div>
-            <div class="col-md-4">
-                <label class="form-label">Status Upload</label>
-                <select name="status_upload" class="form-select">
-                    <option value="all" <?= $monitorStatus === 'all' ? 'selected' : '' ?>>Semua</option>
-                    <option value="uploaded" <?= $monitorStatus === 'uploaded' ? 'selected' : '' ?>>Sudah Terupload</option>
-                    <option value="not_uploaded" <?= $monitorStatus === 'not_uploaded' ? 'selected' : '' ?>>Belum Terupload</option>
+            <div class="col-md-2">
+                <select name="sort_by_monitoring" class="form-select form-select-sm">
+                    <option value="nama" <?= $monitorSortBy === 'nama' ? 'selected' : '' ?>>Nama</option>
+                    <option value="current_semester" <?= $monitorSortBy === 'current_semester' ? 'selected' : '' ?>>Semester</option>
+                    <option value="status_label" <?= $monitorSortBy === 'status_label' ? 'selected' : '' ?>>Status</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-success w-100">Terapkan</button>
+                <select name="sort_dir_monitoring" class="form-select form-select-sm">
+                    <option value="ASC" <?= $monitorSortDir === 'ASC' ? 'selected' : '' ?>>↑ Naik</option>
+                    <option value="DESC" <?= $monitorSortDir === 'DESC' ? 'selected' : '' ?>>↓ Turun</option>
+                </select>
             </div>
             <div class="col-md-2">
-                <a href="index.php?page=data-nilai" class="btn btn-outline-secondary w-100">Reset</a>
+                <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
+            </div>
+            <div class="col-md-3">
+                <a href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>" class="btn btn-outline-secondary btn-sm w-100">Reset Cari</a>
             </div>
         </form>
+
+        <div class="row mb-2 align-items-center small">
+            <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalMonitorRecords)) ?> siswa <?php if ($totalMonitorPages > 1): ?>(Halaman <?= e((string) $monitorPage) ?> dari <?= e((string) $totalMonitorPages) ?>)<?php endif; ?></div>
+            <div class="col-md-6 text-end">
+                <select id="perPageMonitorSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                    <option value="20" <?= $monitorPerPage === 20 ? 'selected' : '' ?>>20 per halaman</option>
+                    <option value="30" <?= $monitorPerPage === 30 ? 'selected' : '' ?>>30 per halaman</option>
+                    <option value="50" <?= $monitorPerPage === 50 ? 'selected' : '' ?>>50 per halaman</option>
+                    <option value="100" <?= $monitorPerPage === 100 ? 'selected' : '' ?>>100 per halaman</option>
+                    <option value="999999" <?= $monitorPerPage === 999999 ? 'selected' : '' ?>>Semua</option>
+                </select>
+            </div>
+        </div>
+        <script>
+            document.getElementById('perPageMonitorSelect').addEventListener('change', function() {
+                const url = new URL(window.location);
+                url.searchParams.set('per_page_monitoring', this.value);
+                url.searchParams.set('page_monitoring', '1');
+                window.location = url;
+            });
+        </script>
 
         <div class="table-wrap">
             <table>
@@ -403,12 +463,12 @@ require dirname(__DIR__) . '/partials/header.php';
                 </tr>
                 </thead>
                 <tbody>
-                <?php if (count($rowsMonitor) === 0): ?>
+                <?php if (count($rowsMonitorPaginated) === 0): ?>
                     <tr>
                         <td colspan="7" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($rowsMonitor as $row): ?>
+                    <?php foreach ($rowsMonitorPaginated as $row): ?>
                         <tr>
                             <td><?= e($row['nisn']) ?></td>
                             <td><?= e($row['nis']) ?></td>
@@ -440,6 +500,34 @@ require dirname(__DIR__) . '/partials/header.php';
                 </tbody>
             </table>
         </div>
+
+        <?php if ($totalMonitorPages > 1): ?>
+            <nav class="mt-3">
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <?php if ($monitorPage > 1): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=1">Pertama</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage - 1)) ?>">Sebelumnya</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php for ($p = max(1, $monitorPage - 2); $p <= min($totalMonitorPages, $monitorPage + 2); $p++): ?>
+                        <li class="page-item <?= $p === $monitorPage ? 'active' : '' ?>">
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    <?php if ($monitorPage < $totalMonitorPages): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage + 1)) ?>">Selanjutnya</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $totalMonitorPages) ?>">Terakhir</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </div>
 </div>
 

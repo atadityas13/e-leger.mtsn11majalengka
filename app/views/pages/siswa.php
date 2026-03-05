@@ -269,7 +269,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$siswa = db()->query('SELECT * FROM siswa ORDER BY nama')->fetchAll();
+$searchQuery = trim($_GET['search'] ?? '');
+$perPage = (int) ($_GET['per_page'] ?? 20);
+$perPage = in_array($perPage, [20, 30, 50, 100, 999999], true) ? $perPage : 20;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$sortBy = $_GET['sort_by'] ?? 'nama';
+$sortBy = in_array($sortBy, ['nama', 'current_semester', 'status_siswa'], true) ? $sortBy : 'nama';
+$sortDir = strtoupper($_GET['sort_dir'] ?? 'ASC');
+$sortDir = in_array($sortDir, ['ASC', 'DESC'], true) ? $sortDir : 'ASC';
+
+$where = '';
+$params = [];
+if ($searchQuery !== '') {
+    $where = 'WHERE nama LIKE :search OR nisn LIKE :search OR nis LIKE :search';
+    $params['search'] = '%' . $searchQuery . '%';
+}
+
+$countStmt = db()->prepare("SELECT COUNT(*) as total FROM siswa {$where}");
+$countStmt->execute($params);
+$totalRecords = (int) $countStmt->fetch()['total'];
+$totalPages = $perPage >= 999999 ? 1 : ceil($totalRecords / $perPage);
+$page = min($page, max(1, $totalPages));
+$offset = ($page - 1) * $perPage;
+
+$sql = "SELECT * FROM siswa {$where} ORDER BY {$sortBy} {$sortDir} LIMIT {$offset}, {$perPage}";
+$stmt = db()->prepare($sql);
+$stmt->execute($params);
+$siswa = $stmt->fetchAll();
 $mapelList = db()->query('SELECT id, nama_mapel FROM mapel ORDER BY id')->fetchAll();
 $setting = setting_akademik();
 
@@ -295,6 +321,53 @@ require dirname(__DIR__) . '/partials/header.php';
         </button>
     </div>
     <div class="card-body">
+        <form method="get" class="row g-2 mb-3">
+            <input type="hidden" name="page" value="siswa">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($searchQuery) ?>">
+            </div>
+            <div class="col-md-2">
+                <select name="sort_by" class="form-select form-select-sm">
+                    <option value="nama" <?= $sortBy === 'nama' ? 'selected' : '' ?>>Nama</option>
+                    <option value="current_semester" <?= $sortBy === 'current_semester' ? 'selected' : '' ?>>Semester</option>
+                    <option value="status_siswa" <?= $sortBy === 'status_siswa' ? 'selected' : '' ?>>Status</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="sort_dir" class="form-select form-select-sm">
+                    <option value="ASC" <?= $sortDir === 'ASC' ? 'selected' : '' ?>>↑ Naik</option>
+                    <option value="DESC" <?= $sortDir === 'DESC' ? 'selected' : '' ?>>↓ Turun</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
+            </div>
+            <div class="col-md-2">
+                <a href="index.php?page=siswa" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
+            </div>
+        </form>
+
+        <div class="row mb-2 align-items-center small">
+            <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalRecords)) ?> siswa <?php if ($totalPages > 1): ?>(Halaman <?= e((string) $page) ?> dari <?= e((string) $totalPages) ?>)<?php endif; ?></div>
+            <div class="col-md-6 text-end">
+                <select name="per_page" id="perPageSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                    <option value="20" <?= $perPage === 20 ? 'selected' : '' ?>>20 per halaman</option>
+                    <option value="30" <?= $perPage === 30 ? 'selected' : '' ?>>30 per halaman</option>
+                    <option value="50" <?= $perPage === 50 ? 'selected' : '' ?>>50 per halaman</option>
+                    <option value="100" <?= $perPage === 100 ? 'selected' : '' ?>>100 per halaman</option>
+                    <option value="999999" <?= $perPage === 999999 ? 'selected' : '' ?>>Semua</option>
+                </select>
+            </div>
+        </div>
+        <script>
+            document.getElementById('perPageSelect').addEventListener('change', function() {
+                const url = new URL(window.location);
+                url.searchParams.set('per_page', this.value);
+                url.searchParams.set('page', '1');
+                window.location = url;
+            });
+        </script>
+
         <div class="table-wrap">
             <table>
                 <thead><tr><th>NISN</th><th>Nama</th><th>Semester</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
@@ -328,8 +401,34 @@ require dirname(__DIR__) . '/partials/header.php';
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
+
+        <?php if ($totalPages > 1): ?>
+            <nav class="mt-3">
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <?php if ($page > 1): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=1">Pertama</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php for ($p = max(1, $page - 2); $p <= min($totalPages, $page + 2); $p++): ?>
+                        <li class="page-item <?= $p === $page ? 'active' : '' ?>">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    <?php if ($page < $totalPages): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) $totalPages) ?>">Terakhir</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        <?php endif; ?>
 
 <div class="modal fade" id="modalTambahSiswa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
