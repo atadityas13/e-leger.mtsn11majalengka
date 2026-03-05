@@ -78,3 +78,21 @@ ALTER TABLE siswa ADD UNIQUE KEY uniq_siswa_nis (nis);
 git checkout -- app/config/database.php
 git pull
 ```
+
+## Dokumentasi GitHub
+
+- Panduan kontribusi: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Kebijakan keamanan: [SECURITY.md](SECURITY.md)
+- Kode etik kontributor: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Riwayat perubahan: [CHANGELOG.md](CHANGELOG.md)
+- Lisensi proyek: [LICENSE.md](LICENSE.md)
+
+## Template Kolaborasi GitHub
+
+- Template bug report: [.github/ISSUE_TEMPLATE/bug_report.md](.github/ISSUE_TEMPLATE/bug_report.md)
+- Template feature request: [.github/ISSUE_TEMPLATE/feature_request.md](.github/ISSUE_TEMPLATE/feature_request.md)
+- Template pull request: [.github/pull_request_template.md](.github/pull_request_template.md)
+
+## Lisensi
+
+Project ini menggunakan lisensi proprietary internal sekolah. Detail lengkap dapat dilihat di [LICENSE.md](LICENSE.md).
