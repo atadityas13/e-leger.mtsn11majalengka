@@ -1,4 +1,44 @@
 <?php
+/**
+ * ========================================================
+ * E-LEGER MTSN 11 MAJALENGKA
+ * ========================================================
+ * 
+ * Sistem Manajemen Data Nilai Siswa
+ * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
+ * 
+ * File: Kelulusan & Migrasi Alumni Page
+ * Deskripsi: Halaman untuk migrasi siswa aktif ke alumni dengan perhitungan nilai ijazah
+ * 
+ * @package    E-Leger-MTSN11
+ * @author     MTsN 11 Majalengka Development Team
+ * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
+ * @license    Proprietary License
+ * @version    1.0.0
+ * @since      2026-01-01
+ * @created    2026-03-06
+ * @modified   2026-03-06
+ * 
+ * Features:
+ * - Migrasi siswa dari aktif ke alumni
+ * - Eligibility check: current_semester = 6 (Akhir)
+ * - Perhitungan nilai ijazah: 60% rata-rata (sem 1-5) + 40% UAM
+ * - Simpan data ijazah per mapel dalam JSON format
+ * - Preservasi nama siswa di tabel alumni
+ * - Auto ALTER TABLE untuk schema compatibility
+ * 
+ * DISCLAIMER:
+ * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
+ * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
+ * tanpa izin tertulis dari MTsN 11 Majalengka.
+ * 
+ * CONTACT:
+ * Website: https://mtsn11majalengka.sch.id
+ * Email: mtsn11majalengka@gmail.com
+ * Phone: (0233) 8319182
+ * 
+ * ========================================================
+ */
 $hasNamaColumn = (bool) db()->query("SHOW COLUMNS FROM alumni LIKE 'nama'")->fetch();
 if (!$hasNamaColumn) {
     db()->exec("ALTER TABLE alumni ADD COLUMN nama VARCHAR(150) NULL AFTER nisn");

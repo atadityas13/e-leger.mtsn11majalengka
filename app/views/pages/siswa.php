@@ -1,4 +1,44 @@
 <?php
+/**
+ * ========================================================
+ * E-LEGER MTSN 11 MAJALENGKA
+ * ========================================================
+ * 
+ * Sistem Manajemen Data Nilai Siswa
+ * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
+ * 
+ * File: Data Siswa Page
+ * Deskripsi: Halaman manajemen data siswa - CRUD, import Excel, dan modal nilai
+ * 
+ * @package    E-Leger-MTSN11
+ * @author     MTsN 11 Majalengka Development Team
+ * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
+ * @license    Proprietary License
+ * @version    1.0.0
+ * @since      2026-01-01
+ * @created    2026-03-06
+ * @modified   2026-03-06
+ * 
+ * Features:
+ * - CRUD operations (Create, Read, Update, Delete)
+ * - Import dari file Excel (.xlsx)
+ * - Search realtime (Nama/NIS/NISN)
+ * - Pagination (20/30/50/100/semua)
+ * - Sorting clickable headers (Nama/Semester/Status)
+ * - Modal view nilai per siswa (Rapor + UAM)
+ * 
+ * DISCLAIMER:
+ * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
+ * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
+ * tanpa izin tertulis dari MTsN 11 Majalengka.
+ * 
+ * CONTACT:
+ * Website: https://mtsn11majalengka.sch.id
+ * Email: mtsn11majalengka@gmail.com
+ * Phone: (0233) 8319182
+ * 
+ * ========================================================
+ */
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;

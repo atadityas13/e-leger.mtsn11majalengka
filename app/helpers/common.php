@@ -1,4 +1,56 @@
 <?php
+/**
+ * ========================================================
+ * E-LEGER MTSN 11 MAJALENGKA
+ * ========================================================
+ * 
+ * Sistem Manajemen Data Nilai Siswa
+ * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
+ * 
+ * File: Common Helper Functions
+ * Deskripsi: Utility functions yang digunakan di seluruh aplikasi
+ * 
+ * @package    E-Leger-MTSN11
+ * @author     MTsN 11 Majalengka Development Team
+ * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
+ * @license    Proprietary License
+ * @version    1.0.0
+ * @since      2026-01-01
+ * @created    2026-03-06
+ * @modified   2026-03-06
+ * 
+ * Functions:
+ * - normalize_current_semester() - Normalisasi nilai semester (string ke int)
+ * - current_semester_label() - Display label semester (Akhir untuk 6)
+ * - hitung_nilai_ijazah() - Kalkulasi nilai ijazah (60% rapor + 40% UAM)
+ * - terbilang_nilai() - Konversi angka ke teks (1-10)
+ * - terbilang_bulat() - Konversi angka bulat ke teks
+ * - semester_upload_target() - Return array semester untuk upload (GANJIL/GENAP)
+ * - setting_akademik() - Fetch pengaturan akademik
+ * - current_user() - Get current user session
+ * - get_flash() - Get flash message dari session
+ * - set_flash() - Set flash message
+ * - redirect() - Server-side redirect
+ * - require_login() - Enforce login authentication
+ * - require_role() - Enforce role-based access control
+ * - app_config() - Get app configuration value
+ * - db() - Get database connection (PDO)
+ * - e() - HTML escape function
+ * - csrf_input() - Generate CSRF token input field
+ * - enforce_csrf() - Validate CSRF token
+ * 
+ * DISCLAIMER:
+ * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
+ * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
+ * tanpa izin tertulis dari MTsN 11 Majalengka.
+ * 
+ * CONTACT:
+ * Website: https://mtsn11majalengka.sch.id
+ * Email: mtsn11majalengka@gmail.com
+ * Phone: (0233) 8319182
+ * 
+ * ========================================================
+ */
 
 declare(strict_types=1);
 

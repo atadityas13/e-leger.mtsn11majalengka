@@ -1,4 +1,47 @@
 <?php
+/**
+ * ========================================================
+ * E-LEGER MTSN 11 MAJALENGKA
+ * ========================================================
+ * 
+ * Sistem Manajemen Data Nilai Siswa
+ * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
+ * 
+ * File: Database Tools Administration Page
+ * Deskripsi: Halaman tools untuk maintenance database - truncate, backup, restore
+ * 
+ * @package    E-Leger-MTSN11
+ * @author     MTsN 11 Majalengka Development Team
+ * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
+ * @license    Proprietary License
+ * @version    1.0.0
+ * @since      2026-01-01
+ * @created    2026-03-06
+ * @modified   2026-03-06
+ * 
+ * Features:
+ * - Truncate (kosongkan) tabel database selektif
+ * - Backup database ke file SQL
+ * - Restore database dari backup file
+ * - List dan manage backup files
+ * - Konfirmasi SweetAlert untuk operasi destruktif
+ * 
+ * WARNING:
+ * Halaman ini hanya dapat diakses oleh admin dengan authentication CSRF.
+ * Operasi truncate dan restore bersifat permanen dan tidak bisa dibatalkan.
+ * 
+ * DISCLAIMER:
+ * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
+ * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
+ * tanpa izin tertulis dari MTsN 11 Majalengka.
+ * 
+ * CONTACT:
+ * Website: https://mtsn11majalengka.sch.id
+ * Email: mtsn11majalengka@gmail.com
+ * Phone: (0233) 8319182
+ * 
+ * ========================================================
+ */
 require_role(['admin']);
 
 $tablesAllowed = [

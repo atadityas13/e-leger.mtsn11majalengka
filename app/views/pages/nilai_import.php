@@ -1,4 +1,43 @@
 <?php
+/**
+ * ========================================================
+ * E-LEGER MTSN 11 MAJALENGKA
+ * ========================================================
+ * 
+ * Sistem Manajemen Data Nilai Siswa
+ * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
+ * 
+ * File: Data Nilai & Import Nilai Page
+ * Deskripsi: Halaman untuk import nilai rapor/UAM dan monitoring upload status
+ * 
+ * @package    E-Leger-MTSN11
+ * @author     MTsN 11 Majalengka Development Team
+ * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
+ * @license    Proprietary License
+ * @version    1.0.0
+ * @since      2026-01-01
+ * @created    2026-03-06
+ * @modified   2026-03-06
+ * 
+ * Features:
+ * - Download template Excel per semester
+ * - Upload nilai rapor/UAM dari file Excel
+ * - Monitoring status upload per siswa
+ * - Filter by semester GANJIL/GENAP dan status upload
+ * - Search, pagination, dan sorting kolom
+ * 
+ * DISCLAIMER:
+ * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
+ * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
+ * tanpa izin tertulis dari MTsN 11 Majalengka.
+ * 
+ * CONTACT:
+ * Website: https://mtsn11majalengka.sch.id
+ * Email: mtsn11majalengka@gmail.com
+ * Phone: (0233) 8319182
+ * 
+ * ========================================================
+ */
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
