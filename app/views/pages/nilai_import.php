@@ -329,69 +329,15 @@ require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-1">Data Nilai - Template Excel</h3>
-        <p class="text-secondary mb-0">Download template, isi nilai per kolom mapel, lalu upload di bawah.</p>
+        <h3 class="mb-1">Import Data Nilai</h3>
+        <p class="text-secondary mb-0">Download template dan upload nilai melalui modal import agar halaman lebih ringkas.</p>
     </div>
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <form method="post">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="download_template_rapor">
-                    <button type="submit" class="btn btn-outline-success w-100">Download Template Rapor</button>
-                </form>
-            </div>
-            <div class="col-md-6">
-                <form method="post">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="download_template_uam">
-                    <button type="submit" class="btn btn-outline-primary w-100">Download Template UAM</button>
-                </form>
-            </div>
-        </div>
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportNilai">
+            <i class="bi bi-cloud-arrow-up me-1"></i>Buka Modal Import Nilai
+        </button>
     </div>
 </div>
-
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-1">Import Excel Nilai Rapor</h3>
-        <p class="text-secondary mb-0">Upload 1 file leger lengkap (banyak kolom mapel) sesuai format template.</p>
-    </div>
-    <div class="card-body">
-        <form method="post" enctype="multipart/form-data" class="row g-3">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="import_rapor">
-            <div class="col-md-8">
-                <label class="form-label">File Excel (.xlsx/.xls)</label>
-                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-success w-100">Import Rapor</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<?php if ($semesterAktif === 'GENAP'): ?>
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-0">Import Excel Nilai UAM (Semester 5)</h3>
-    </div>
-    <div class="card-body">
-        <form method="post" enctype="multipart/form-data" class="row g-3">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="import_uam">
-            <div class="col-md-8">
-                <label class="form-label">File Excel (.xlsx/.xls)</label>
-                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Import UAM</button>
-            </div>
-        </form>
-    </div>
-</div>
-<?php endif; ?>
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-3">
@@ -462,6 +408,73 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportNilai" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Data Nilai</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary mb-3">Download template lalu upload file nilai rapor/UAM dari form berikut.</p>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <form method="post">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="download_template_rapor">
+                            <button type="submit" class="btn btn-outline-success w-100">Download Template Rapor</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="post">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="download_template_uam">
+                            <button type="submit" class="btn btn-outline-primary w-100">Download Template UAM</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card border-0 bg-light mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-2">Import Excel Nilai Rapor</h6>
+                        <form method="post" enctype="multipart/form-data" class="row g-3">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="import_rapor">
+                            <div class="col-md-8">
+                                <label class="form-label">File Excel (.xlsx/.xls)</label>
+                                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">Import Rapor</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <?php if ($semesterAktif === 'GENAP'): ?>
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="mb-2">Import Excel Nilai UAM (Semester 5)</h6>
+                            <form method="post" enctype="multipart/form-data" class="row g-3">
+                                <?= csrf_input() ?>
+                                <input type="hidden" name="action" value="import_uam">
+                                <div class="col-md-8">
+                                    <label class="form-label">File Excel (.xlsx/.xls)</label>
+                                    <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">Import UAM</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>

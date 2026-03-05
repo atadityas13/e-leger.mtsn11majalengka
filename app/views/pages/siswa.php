@@ -255,35 +255,12 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-0 pt-3">
         <h3 class="mb-1">Import Data Siswa dari Excel</h3>
-        <p class="text-secondary mb-0">Unduh template, isi data siswa, lalu upload untuk input massal.</p>
+        <p class="text-secondary mb-0">Unduh template dan upload data siswa massal melalui modal import.</p>
     </div>
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <form method="post">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="download_template_siswa">
-                    <button type="submit" class="btn btn-outline-success w-100">
-                        <i class="bi bi-download me-1"></i>Download Template Siswa
-                    </button>
-                </form>
-            </div>
-            <div class="col-md-8">
-                <form method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="import_excel_siswa">
-                    <div class="col-md-8">
-                        <label class="form-label mb-1">File Excel (.xlsx/.xls)</label>
-                        <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-upload me-1"></i>Import Siswa
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportSiswa">
+            <i class="bi bi-cloud-arrow-up me-1"></i>Buka Modal Import Siswa
+        </button>
     </div>
 </div>
 
@@ -364,6 +341,41 @@ require dirname(__DIR__) . '/partials/header.php';
                     <button type="submit" class="btn btn-success">Simpan</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportSiswa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Data Siswa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary mb-3">Unduh template, isi data siswa, lalu upload file Excel untuk input massal.</p>
+                <form method="post" class="mb-3">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="download_template_siswa">
+                    <button type="submit" class="btn btn-outline-success w-100">
+                        <i class="bi bi-download me-1"></i>Download Template Siswa
+                    </button>
+                </form>
+
+                <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="import_excel_siswa">
+                    <div class="col-md-8">
+                        <label class="form-label">File Excel (.xlsx/.xls)</label>
+                        <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-upload me-1"></i>Import Siswa
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
