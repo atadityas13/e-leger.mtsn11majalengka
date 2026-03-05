@@ -51,30 +51,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<div class="card">
-    <h3>Set Tahun Ajaran Aktif</h3>
-    <form method="post" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="set_aktif">
-        <div><label>Tahun Ajaran</label><input type="text" name="tahun_ajaran" value="<?= e($setting['tahun_ajaran']) ?>" required></div>
-        <div>
-            <label>Semester Aktif</label>
-            <select name="semester_aktif" required>
-                <option value="GANJIL" <?= $setting['semester_aktif'] === 'GANJIL' ? 'selected' : '' ?>>GANJIL</option>
-                <option value="GENAP" <?= $setting['semester_aktif'] === 'GENAP' ? 'selected' : '' ?>>GENAP</option>
-            </select>
-        </div>
-        <div><label>&nbsp;</label><button type="submit">Simpan Pengaturan</button></div>
-    </form>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Set Tahun Ajaran Aktif</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="set_aktif">
+            <div class="col-md-5"><label class="form-label">Tahun Ajaran</label><input type="text" class="form-control" name="tahun_ajaran" value="<?= e($setting['tahun_ajaran']) ?>" required></div>
+            <div class="col-md-4">
+                <label class="form-label">Semester Aktif</label>
+                <select name="semester_aktif" class="form-select" required>
+                    <option value="GANJIL" <?= $setting['semester_aktif'] === 'GANJIL' ? 'selected' : '' ?>>GANJIL</option>
+                    <option value="GENAP" <?= $setting['semester_aktif'] === 'GENAP' ? 'selected' : '' ?>>GENAP</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end"><button type="submit" class="btn btn-success w-100">Simpan Pengaturan</button></div>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Finalisasi Semester</h3>
-    <p>Proses ini akan mengunci nilai rapor semester target dan menaikkan current_semester siswa aktif. Siswa status Tidak Melanjutkan tidak diproses.</p>
-    <form method="post" onsubmit="return confirm('Yakin finalisasi semester aktif?')">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="finalisasi">
-        <button type="submit" class="danger">Finalisasi Sekarang</button>
-    </form>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Finalisasi Semester</h3>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning border mb-3">
+            Proses ini akan mengunci nilai rapor semester target dan menaikkan current semester siswa aktif. Siswa status Tidak Melanjutkan tidak diproses.
+        </div>
+        <form method="post" onsubmit="return confirm('Yakin finalisasi semester aktif?')">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="finalisasi">
+            <button type="submit" class="btn btn-danger">Finalisasi Sekarang</button>
+        </form>
+    </div>
 </div>
 <?php require dirname(__DIR__) . '/partials/footer.php';

@@ -98,40 +98,52 @@ $alumniList = db()->query('SELECT nisn, angkatan_lulus FROM alumni ORDER BY angk
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<div class="card">
-    <h3>Cetak Leger Kolektif (Excel)</h3>
-    <form method="post" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="leger">
-        <div>
-            <label>Tahun Ajaran</label>
-            <input type="text" name="tahun_ajaran" value="<?= e($setting['tahun_ajaran']) ?>" required>
-        </div>
-        <div>
-            <label>Semester</label>
-            <select name="semester">
-                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
-            </select>
-        </div>
-        <div><label>&nbsp;</label><button type="submit">Download Excel</button></div>
-    </form>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Cetak Leger Kolektif (Excel)</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" class="row g-3 align-items-end">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="leger">
+            <div class="col-md-5">
+                <label class="form-label">Tahun Ajaran</label>
+                <input type="text" class="form-control" name="tahun_ajaran" value="<?= e($setting['tahun_ajaran']) ?>" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Semester</label>
+                <select name="semester" class="form-select">
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success w-100">Download Excel</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Cetak Transkrip Ijazah (PDF)</h3>
-    <form method="post" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="transkrip">
-        <div>
-            <label>Pilih Alumni (NISN)</label>
-            <select name="nisn" required>
-                <option value="">-- pilih alumni --</option>
-                <?php foreach ($alumniList as $a): ?>
-                    <option value="<?= e($a['nisn']) ?>"><?= e($a['nisn']) ?> - Angkatan <?= e((string)$a['angkatan_lulus']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div><label>&nbsp;</label><button type="submit">Download PDF</button></div>
-    </form>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Cetak Transkrip Ijazah (PDF)</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" class="row g-3 align-items-end">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="transkrip">
+            <div class="col-md-8">
+                <label class="form-label">Pilih Alumni (NISN)</label>
+                <select name="nisn" class="form-select" required>
+                    <option value="">-- pilih alumni --</option>
+                    <?php foreach ($alumniList as $a): ?>
+                        <option value="<?= e($a['nisn']) ?>"><?= e($a['nisn']) ?> - Angkatan <?= e((string)$a['angkatan_lulus']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Download PDF</button>
+            </div>
+        </form>
+    </div>
 </div>
 <?php require dirname(__DIR__) . '/partials/footer.php';

@@ -27,49 +27,66 @@ $mapel = db()->query('SELECT * FROM mapel ORDER BY kelompok, nama_mapel')->fetch
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<div class="card">
-    <h3>Tambah Mapel</h3>
-    <form method="post" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="create">
-        <div>
-            <label>Nama Mapel</label><input type="text" name="nama_mapel" required>
-        </div>
-        <div>
-            <label>Kelompok</label>
-            <select name="kelompok"><option value="A">A</option><option value="B">B</option></select>
-        </div>
-        <div>
-            <label>Sub PAI</label>
-            <div class="inline"><input type="checkbox" name="is_sub_pai" value="1"><span>Ya</span></div>
-        </div>
-        <div><label>&nbsp;</label><button type="submit">Simpan</button></div>
-    </form>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Tambah Mapel</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="create">
+            <div class="col-md-6">
+                <label class="form-label">Nama Mapel</label>
+                <input type="text" name="nama_mapel" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Kelompok</label>
+                <select name="kelompok" class="form-select">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label d-block">Sub PAI</label>
+                <div class="form-check mt-2">
+                    <input type="checkbox" class="form-check-input" name="is_sub_pai" value="1" id="is_sub_pai">
+                    <label class="form-check-label" for="is_sub_pai">Ya</label>
+                </div>
+            </div>
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-success">Simpan</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Data Mapel</h3>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>Mapel</th><th>Kelompok</th><th>Sub PAI</th><th>Aksi</th></tr></thead>
-            <tbody>
-            <?php foreach ($mapel as $m): ?>
-                <tr>
-                    <td><?= e($m['nama_mapel']) ?></td>
-                    <td><?= e($m['kelompok']) ?></td>
-                    <td><?= (int) $m['is_sub_pai'] === 1 ? 'Ya' : 'Tidak' ?></td>
-                    <td>
-                        <form method="post" onsubmit="return confirm('Hapus mapel ini?')">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="delete">
-                            <input type="hidden" name="id" value="<?= e((string)$m['id']) ?>">
-                            <button type="submit" class="danger">Hapus</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Data Mapel</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Mapel</th><th>Kelompok</th><th>Sub PAI</th><th class="text-end">Aksi</th></tr></thead>
+                <tbody>
+                <?php foreach ($mapel as $m): ?>
+                    <tr>
+                        <td><?= e($m['nama_mapel']) ?></td>
+                        <td><span class="badge text-bg-light border"><?= e($m['kelompok']) ?></span></td>
+                        <td><?= (int) $m['is_sub_pai'] === 1 ? 'Ya' : 'Tidak' ?></td>
+                        <td class="text-end">
+                            <form method="post" class="d-inline" onsubmit="return confirm('Hapus mapel ini?')">
+                                <?= csrf_input() ?>
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="id" value="<?= e((string)$m['id']) ?>">
+                                <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 <?php require dirname(__DIR__) . '/partials/footer.php';

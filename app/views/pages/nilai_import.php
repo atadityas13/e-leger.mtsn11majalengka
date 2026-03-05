@@ -101,44 +101,62 @@ $mapel = db()->query('SELECT id, nama_mapel FROM mapel ORDER BY nama_mapel')->fe
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<div class="card">
-    <h3>Import Excel Nilai Rapor</h3>
-    <p>Format file: kolom A=NISN, kolom B=Nilai Angka (rentang valid 70-100). Sistem otomatis mengikuti current_semester siswa dan semester aktif.</p>
-    <form method="post" enctype="multipart/form-data" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="import_rapor">
-        <div>
-            <label>Mapel</label>
-            <select name="mapel_id" required>
-                <option value="">-- pilih --</option>
-                <?php foreach ($mapel as $m): ?>
-                    <option value="<?= e((string)$m['id']) ?>"><?= e($m['nama_mapel']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div><label>File Excel (.xlsx)</label><input type="file" name="file_excel" accept=".xlsx,.xls" required></div>
-        <div><label>&nbsp;</label><button type="submit">Import Rapor</button></div>
-    </form>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-1">Import Excel Nilai Rapor</h3>
+        <p class="text-secondary mb-0">Format file: kolom A=NISN, kolom B=Nilai Angka (rentang valid 70-100). Sistem otomatis mengikuti current semester siswa.</p>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="row g-3">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="import_rapor">
+            <div class="col-md-5">
+                <label class="form-label">Mapel</label>
+                <select name="mapel_id" class="form-select" required>
+                    <option value="">-- pilih --</option>
+                    <?php foreach ($mapel as $m): ?>
+                        <option value="<?= e((string)$m['id']) ?>"><?= e($m['nama_mapel']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">File Excel (.xlsx/.xls)</label>
+                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-success w-100">Import Rapor</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <?php if ($semesterAktif === 'GENAP'): ?>
-<div class="card">
-    <h3>Import Excel Nilai UAM (Semester 5)</h3>
-    <form method="post" enctype="multipart/form-data" class="grid-3">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="import_uam">
-        <div>
-            <label>Mapel</label>
-            <select name="mapel_id" required>
-                <option value="">-- pilih --</option>
-                <?php foreach ($mapel as $m): ?>
-                    <option value="<?= e((string)$m['id']) ?>"><?= e($m['nama_mapel']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div><label>File Excel (.xlsx)</label><input type="file" name="file_excel" accept=".xlsx,.xls" required></div>
-        <div><label>&nbsp;</label><button type="submit">Import UAM</button></div>
-    </form>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Import Excel Nilai UAM (Semester 5)</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="row g-3">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="import_uam">
+            <div class="col-md-5">
+                <label class="form-label">Mapel</label>
+                <select name="mapel_id" class="form-select" required>
+                    <option value="">-- pilih --</option>
+                    <?php foreach ($mapel as $m): ?>
+                        <option value="<?= e((string)$m['id']) ?>"><?= e($m['nama_mapel']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">File Excel (.xlsx/.xls)</label>
+                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Import UAM</button>
+            </div>
+        </form>
+    </div>
 </div>
 <?php endif; ?>
 <?php require dirname(__DIR__) . '/partials/footer.php';

@@ -65,29 +65,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<div class="card">
-    <h3>Migrasi Kelulusan ke Alumni</h3>
-    <p>Syarat: siswa aktif semester 5, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</p>
-    <form method="post" class="inline" onsubmit="return confirm('Proses migrasi kelulusan?')">
-        <?= csrf_input() ?>
-        <input type="hidden" name="action" value="migrate">
-        <label>Tahun Angkatan Lulus</label>
-        <input type="number" name="angkatan_lulus" value="<?= e(date('Y')) ?>" required>
-        <button type="submit">Migrasi Sekarang</button>
-    </form>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3">
+        <h3 class="mb-0">Migrasi Kelulusan ke Alumni</h3>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info border mb-3">Syarat: siswa aktif semester 5, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</div>
+        <form method="post" class="row g-3 align-items-end" onsubmit="return confirm('Proses migrasi kelulusan?')">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="migrate">
+            <div class="col-md-4">
+                <label class="form-label">Tahun Angkatan Lulus</label>
+                <input type="number" class="form-control" name="angkatan_lulus" value="<?= e(date('Y')) ?>" required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-success">Migrasi Sekarang</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Daftar Siswa Eligible Kelulusan</h3>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>NISN</th><th>Nama</th></tr></thead>
-            <tbody>
-            <?php foreach ($eligible as $s): ?>
-                <tr><td><?= e($s['nisn']) ?></td><td><?= e($s['nama']) ?></td></tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">Daftar Siswa Eligible Kelulusan</h3>
+        <span class="badge text-bg-light border"><?= e((string) count($eligible)) ?> siswa</span>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>NISN</th><th>Nama</th></tr></thead>
+                <tbody>
+                <?php foreach ($eligible as $s): ?>
+                    <tr><td><?= e($s['nisn']) ?></td><td><?= e($s['nama']) ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 <?php require dirname(__DIR__) . '/partials/footer.php';
