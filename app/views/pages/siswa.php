@@ -44,16 +44,6 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-if (!function_exists('normalize_siswa_header')) {
-    function normalize_siswa_header(string $value): string
-    {
-        $value = strtoupper(trim($value));
-        $value = str_replace(['.', '-', '/', '_'], ' ', $value);
-        $value = preg_replace('/\s+/', ' ', $value);
-        return trim($value);
-    }
-}
-
 if (!function_exists('siswa_excel_date_to_mysql')) {
     function siswa_excel_date_to_mysql($value): ?string
     {
@@ -84,6 +74,97 @@ if (!function_exists('siswa_excel_date_to_mysql')) {
         }
 
         return null;
+    }
+}
+
+if (!function_exists('normalize_siswa_header')) {
+    function normalize_siswa_header(string $header): string {
+        $header = strtoupper(trim($header));
+        $header = preg_replace('/\s+/', ' ', $header);
+        $header = str_replace(['NO.', 'NO ', ' ', '-', '_'], ['NO', 'NO', '', '', ''], $header);
+
+        $map = [
+            'NOABSEN' => 'NO ABSEN',
+            'NOINDUK' => 'NIS',
+            'NISN' => 'NISN',
+            'NAMA' => 'NAMA',
+            'NAMASANTRI' => 'NAMA',
+            'TTLTEMPATLAHAIRTANGGALLAHIR' => 'TTL',
+            'KELAS' => 'KELAS',
+            'TINGKATAN' => 'KELAS',
+        ];
+
+        foreach ($map as $from => $to) {
+            if (strpos($header, str_replace(' ', '', $from)) !== false) {
+                return $to;
+            }
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('siswa_parse_indonesian_date')) {
+    function siswa_parse_indonesian_date(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^(\d{1,2})\s+([[:alpha:]]+)\s+(\d{4})$/u', $value, $m)) {
+            $day = (int) $m[1];
+            $monthName = strtolower(trim($m[2]));
+            $year = (int) $m[3];
+
+            $months = [
+                'januari' => 1,
+                'februari' => 2,
+                'pebruari' => 2,
+                'maret' => 3,
+                'april' => 4,
+                'mei' => 5,
+                'juni' => 6,
+                'juli' => 7,
+                'agustus' => 8,
+                'september' => 9,
+                'oktober' => 10,
+                'november' => 11,
+                'desember' => 12,
+            ];
+
+            if (!isset($months[$monthName])) {
+                return null;
+            }
+
+            $month = (int) $months[$monthName];
+            if (!checkdate($month, $day, $year)) {
+                return null;
+            }
+
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+
+        return siswa_excel_date_to_mysql($value);
+    }
+}
+
+if (!function_exists('siswa_parse_ttl_rdm')) {
+    function siswa_parse_ttl_rdm(string $ttl): array
+    {
+        $ttl = trim($ttl);
+        if ($ttl === '') {
+            return ['tempat' => '', 'tgl' => null];
+        }
+
+        $parts = explode(',', $ttl, 2);
+        if (count($parts) === 2) {
+            $tempat = trim($parts[0]);
+            $tanggal = siswa_parse_indonesian_date(trim($parts[1]));
+            return ['tempat' => $tempat, 'tgl' => $tanggal];
+        }
+
+        return ['tempat' => '', 'tgl' => siswa_parse_indonesian_date($ttl)];
     }
 }
 
@@ -125,10 +206,74 @@ if (!function_exists('download_template_siswa')) {
     }
 }
 
+$siswaRdmPreviewSessionKey = 'siswa_rdm_import_preview';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     enforce_csrf('siswa');
 
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'cancel_preview_siswa_rdm') {
+        unset($_SESSION[$siswaRdmPreviewSessionKey]);
+        set_flash('success', 'Preview import siswa RDM dibatalkan. Tidak ada data yang diubah.');
+        redirect('index.php?page=siswa');
+    }
+
+    if ($action === 'confirm_import_siswa_rdm') {
+        $preview = $_SESSION[$siswaRdmPreviewSessionKey] ?? null;
+        if (!is_array($preview) || empty($preview['entries'])) {
+            set_flash('error', 'Preview import tidak ditemukan. Silakan upload ulang file RDM dan lakukan preview terlebih dahulu.');
+            redirect('index.php?page=siswa');
+        }
+
+        db()->beginTransaction();
+        try {
+            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
+            $updateStmt = db()->prepare('UPDATE siswa SET nis=:nis, nama=:nama, tempat_lahir=:tempat, tgl_lahir=:tgl, kelas=:kelas, nomor_absen=:nomor_absen WHERE nisn=:nisn');
+
+            foreach ($preview['entries'] as $entry) {
+                if (!is_array($entry)) {
+                    continue;
+                }
+
+                if (($entry['aksi'] ?? '') === 'INSERT') {
+                    $insertStmt->execute([
+                        'nisn' => (string) ($entry['nisn'] ?? ''),
+                        'nis' => (string) ($entry['nis'] ?? ''),
+                        'nama' => (string) ($entry['nama'] ?? ''),
+                        'tempat' => (string) ($entry['tempat'] ?? ''),
+                        'tgl' => (string) ($entry['tgl'] ?? null),
+                        'kelas' => ($entry['kelas'] ?? '') !== '' ? $entry['kelas'] : null,
+                        'nomor_absen' => $entry['nomor_absen'] ?? null,
+                        'semester' => 1,
+                        'status' => 'Aktif',
+                    ]);
+                } elseif (($entry['aksi'] ?? '') === 'UPDATE') {
+                    $updateStmt->execute([
+                        'nis' => (string) ($entry['nis'] ?? ''),
+                        'nama' => (string) ($entry['nama'] ?? ''),
+                        'tempat' => (string) ($entry['tempat'] ?? ''),
+                        'tgl' => (string) ($entry['tgl'] ?? null),
+                        'kelas' => ($entry['kelas'] ?? '') !== '' ? $entry['kelas'] : null,
+                        'nomor_absen' => $entry['nomor_absen'] ?? null,
+                        'nisn' => (string) ($entry['nisn'] ?? ''),
+                    ]);
+                }
+            }
+
+            db()->commit();
+            unset($_SESSION[$siswaRdmPreviewSessionKey]);
+
+            $insertCount = (int) ($preview['meta']['insert_count'] ?? 0);
+            $updateCount = (int) ($preview['meta']['update_count'] ?? 0);
+            set_flash('success', "Import siswa RDM berhasil dikonfirmasi. Insert: {$insertCount}, update: {$updateCount}.");
+        } catch (Throwable $e) {
+            db()->rollBack();
+            set_flash('error', 'Konfirmasi import siswa RDM gagal: ' . $e->getMessage());
+        }
+
+        redirect('index.php?page=siswa');
+    }
 
     if ($action === 'download_template_siswa') {
         if (!class_exists(Spreadsheet::class)) {
@@ -177,6 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $kelasIndex = $headerMap['KELAS'] ?? null;
         $nomorAbsenIndex = $headerMap['NOMOR ABSEN'] ?? null;
+        $semesterIndex = $headerMap['CURRENT SEMESTER'] ?? null;
+        $statusIndex = $headerMap['STATUS SISWA'] ?? null;
 
         db()->beginTransaction();
         try {
@@ -240,6 +387,125 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_flash('error', 'Import siswa gagal: ' . $e->getMessage());
         }
 
+        redirect('index.php?page=siswa');
+    }
+
+    if ($action === 'preview_excel_siswa_rdm') {
+        if (!class_exists(IOFactory::class)) {
+            set_flash('error', 'PhpSpreadsheet belum terpasang. Jalankan composer install.');
+            redirect('index.php?page=siswa');
+        }
+
+        $tmp = $_FILES['file_excel']['tmp_name'] ?? '';
+        if ($tmp === '') {
+            set_flash('error', 'File Excel RDM wajib diisi.');
+            redirect('index.php?page=siswa');
+        }
+
+        $spreadsheet = IOFactory::load($tmp);
+        $rows = $spreadsheet->getActiveSheet()->toArray();
+
+        if (count($rows) < 2) {
+            set_flash('error', 'File RDM tidak berisi data siswa.');
+            redirect('index.php?page=siswa');
+        }
+
+        $headerMap = [];
+        foreach ($rows[0] as $index => $header) {
+            $key = normalize_siswa_header((string) $header);
+            if ($key !== '') {
+                $headerMap[$key] = (int) $index;
+            }
+        }
+
+        $required = ['NO ABSEN', 'NIS', 'NISN', 'NAMA', 'TTL', 'KELAS'];
+        foreach ($required as $req) {
+            if (!array_key_exists($req, $headerMap)) {
+                set_flash('error', 'Header RDM wajib tidak ditemukan: ' . $req);
+                redirect('index.php?page=siswa');
+            }
+        }
+
+        $findByNisnStmt = db()->prepare('SELECT nisn, nis FROM siswa WHERE nisn=:nisn LIMIT 1');
+        $findByNisStmt = db()->prepare('SELECT nisn FROM siswa WHERE nis=:nis LIMIT 1');
+
+        $entries = [];
+        $insertCount = 0;
+        $updateCount = 0;
+        $invalid = 0;
+        $skipNisConflict = 0;
+
+        for ($i = 1; $i < count($rows); $i++) {
+            $excelRow = $i + 1;
+            $row = $rows[$i];
+            $nisn = trim((string) ($row[$headerMap['NISN']] ?? ''));
+            $nis = trim((string) ($row[$headerMap['NIS']] ?? ''));
+            $nama = trim((string) ($row[$headerMap['NAMA']] ?? ''));
+            $ttlRaw = trim((string) ($row[$headerMap['TTL']] ?? ''));
+            $kelas = trim((string) ($row[$headerMap['KELAS']] ?? ''));
+            $nomorAbsenRaw = trim((string) ($row[$headerMap['NO ABSEN']] ?? ''));
+            $nomorAbsen = $nomorAbsenRaw !== '' ? (int) $nomorAbsenRaw : null;
+
+            if ($nisn === '' && $nis === '' && $nama === '' && $ttlRaw === '') {
+                continue;
+            }
+
+            $ttlParsed = siswa_parse_ttl_rdm($ttlRaw);
+            $tempat = trim((string) ($ttlParsed['tempat'] ?? ''));
+            $tgl = $ttlParsed['tgl'] ?? null;
+
+            if ($nisn === '' || $nis === '' || $nama === '' || $tempat === '' || $tgl === null) {
+                $invalid++;
+                continue;
+            }
+
+            $findByNisnStmt->execute(['nisn' => $nisn]);
+            $existingByNisn = $findByNisnStmt->fetch();
+
+            $findByNisStmt->execute(['nis' => $nis]);
+            $existingByNis = $findByNisStmt->fetch();
+            if ($existingByNis && (string) $existingByNis['nisn'] !== $nisn) {
+                $skipNisConflict++;
+                continue;
+            }
+
+            $aksi = $existingByNisn ? 'UPDATE' : 'INSERT';
+            if ($aksi === 'INSERT') {
+                $insertCount++;
+            } else {
+                $updateCount++;
+            }
+
+            $entries[] = [
+                'excel_row' => $excelRow,
+                'nisn' => $nisn,
+                'nis' => $nis,
+                'nama' => $nama,
+                'tempat' => $tempat,
+                'tgl' => $tgl,
+                'kelas' => $kelas !== '' ? $kelas : '-',
+                'nomor_absen' => $nomorAbsen ?? '-',
+                'aksi' => $aksi,
+            ];
+        }
+
+        if (count($entries) === 0) {
+            set_flash('error', 'Tidak ada data siswa yang bisa diproses untuk preview. Periksa format file dan data wajib.');
+            redirect('index.php?page=siswa');
+        }
+
+        $_SESSION[$siswaRdmPreviewSessionKey] = [
+            'meta' => [
+                'generated_at' => date('Y-m-d H:i:s'),
+                'insert_count' => $insertCount,
+                'update_count' => $updateCount,
+                'invalid_count' => $invalid,
+                'conflict_nis_count' => $skipNisConflict,
+            ],
+            'entries' => $entries,
+        ];
+
+        set_flash('success', 'Preview siswa RDM berhasil dibuat. Periksa semua baris pada tabel preview sebelum klik Konfirmasi Import.');
         redirect('index.php?page=siswa');
     }
 
@@ -442,6 +708,91 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 </div>
 
+<?php
+$siswa_preview = $_SESSION['siswa_rdm_import_preview'] ?? null;
+if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
+    $meta = $siswa_preview['meta'] ?? [];
+?>
+<div class="card border-0 shadow-sm mb-3 border-warning">
+    <div class="card-header bg-light border-0 pt-3">
+        <h4 class="mb-1"><i class="bi bi-eye me-2 text-warning"></i>Preview Import Siswa RDM</h4>
+        <small class="text-secondary">Dibuat: <?= e($meta['generated_at'] ?? 'N/A') ?></small>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="alert alert-info mb-0"><strong>Insert Baru:</strong> <?= e((int) ($meta['insert_count'] ?? 0)) ?></div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert alert-warning mb-0"><strong>Update:</strong> <?= e((int) ($meta['update_count'] ?? 0)) ?></div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert alert-danger mb-0"><strong>Invalid:</strong> <?= e((int) ($meta['invalid_count'] ?? 0)) ?></div>
+            </div>
+            <div class="col-md-3">
+                <div class="alert alert-secondary mb-0"><strong>Konflik NIS:</strong> <?= e((int) ($meta['conflict_nis_count'] ?? 0)) ?></div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">Baris</th>
+                        <th>NISN</th>
+                        <th>NIS</th>
+                        <th>Nama</th>
+                        <th>TTL</th>
+                        <th>Kelas</th>
+                        <th>No. Absen</th>
+                        <th style="width: 80px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($siswa_preview['entries'] as $entry): ?>
+                    <tr class="<?= ($entry['aksi'] ?? '') === 'INSERT' ? 'table-info' : (($entry['aksi'] ?? '') === 'UPDATE' ? 'table-warning' : '') ?>">
+                        <td><?= e($entry['excel_row'] ?? '-') ?></td>
+                        <td><strong><?= e($entry['nisn'] ?? '-') ?></strong></td>
+                        <td><?= e($entry['nis'] ?? '-') ?></td>
+                        <td><?= e($entry['nama'] ?? '-') ?></td>
+                        <td><small><?= e($entry['tempat'] ?? '-') ?>, <?= e($entry['tgl'] ?? '-') ?></small></td>
+                        <td><?= e($entry['kelas'] ?? '-') ?></td>
+                        <td><?= e($entry['nomor_absen'] ?? '-') ?></td>
+                        <td>
+                            <span class="badge <?= ($entry['aksi'] ?? '') === 'INSERT' ? 'bg-success' : (($entry['aksi'] ?? '') === 'UPDATE' ? 'bg-warning text-dark' : 'bg-secondary') ?>">
+                                <?= e($entry['aksi'] ?? 'SKIP') ?>
+                            </span>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <form method="post" class="d-inline">
+                    <?= csrf_input('siswa') ?>
+                    <input type="hidden" name="action" value="confirm_import_siswa_rdm">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>Konfirmasi Import
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-6 text-end">
+                <form method="post" class="d-inline">
+                    <?= csrf_input('siswa') ?>
+                    <input type="hidden" name="action" value="cancel_preview_siswa_rdm">
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bi bi-x-circle me-1"></i>Batalkan Preview
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
         <h3 class="mb-0">Data Siswa</h3>
@@ -637,6 +988,24 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     <div class="col-md-4">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="bi bi-upload me-1"></i>Import Siswa
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <h6 class="mb-2">Import Data Siswa dari Ekspor RDM</h6>
+                <p class="text-secondary mb-3 small">Format didukung: <code>No. Absen</code>, <code>NIS</code>, <code>NISN</code>, <code>Nama</code>, <code>L/P</code>, <code>TTL</code>, <code>Kelas</code>. Baris dengan NISN yang sudah ada akan di-update otomatis.</p>
+                <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="preview_excel_siswa_rdm">
+                    <div class="col-md-8">
+                        <label class="form-label">File Excel Ekspor RDM (.xlsx/.xls)</label>
+                        <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-search me-1"></i>Preview Siswa RDM
                         </button>
                     </div>
                 </form>
