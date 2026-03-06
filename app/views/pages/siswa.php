@@ -759,8 +759,8 @@ if ($kelasFilter !== '') {
 $countStmt = db()->prepare("SELECT COUNT(*) as total FROM siswa {$where}");
 $countStmt->execute($params);
 $totalRecords = (int) $countStmt->fetch()['total'];
-$totalPages = $perPage >= 999999 ? 1 : ceil($totalRecords / $perPage);
-$page = min($page, max(1, $totalPages));
+$totalPages = (int) ($perPage >= 999999 ? 1 : ceil($totalRecords / $perPage));
+$page = (int) min($page, max(1, $totalPages));
 $offset = ($page - 1) * $perPage;
 
 $sql = "SELECT * FROM siswa {$where} ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama ASC LIMIT {$offset}, {$perPage}";
@@ -967,27 +967,27 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
         <?php if ($totalPages > 1): ?>
             <nav class="mt-3">
                 <ul class="pagination pagination-sm mb-0 justify-content-center">
-                    <?php if ($page > 1): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=1">Pertama</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
-                        </li>
-                    <?php endif; ?>
-                    <?php for ($pNum = max(1, $page - 2); $pNum <= min($totalPages, $page + 2); $pNum++): ?>
-                        <li class="page-item <?= $pNum === $page ? 'active' : '' ?>">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $pNum) ?>"><?= e((string) $pNum) ?></a>
-                        </li>
-                    <?php endfor; ?>
-                    <?php if ($page < $totalPages): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $totalPages) ?>">Terakhir</a>
-                        </li>
-                    <?php endif; ?>
+                        <?php if ($page > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=1">Pertama</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
+                            </li>
+                        <?php endif; ?>
+                        <?php for ($p = max(1, $page - 2); $p <= min($totalPages, $page + 2); $p++): ?>
+                            <li class="page-item <?= $p === $page ? 'active' : '' ?>">
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        <?php if ($page < $totalPages): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $totalPages) ?>">Terakhir</a>
+                            </li>
+                        <?php endif; ?>
                 </ul>
             </nav>
         <?php endif; ?>
