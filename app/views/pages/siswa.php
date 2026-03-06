@@ -724,19 +724,19 @@ $searchQuery = trim($_GET['search'] ?? '');
 $kelasFilter = trim($_GET['kelas'] ?? '');
 $perPage = (int) ($_GET['per_page'] ?? 20);
 $perPage = in_array($perPage, [20, 30, 50, 100, 999999], true) ? $perPage : 20;
-$page = max(1, (int) ($_GET['page'] ?? 1));
+$page = max(1, (int) ($_GET['p'] ?? 1));
 $sortBy = $_GET['sort_by'] ?? 'kelas,nomor_absen,nama';
 $sortDir = strtoupper($_GET['sort_dir'] ?? 'ASC');
 $sortDir = in_array($sortDir, ['ASC', 'DESC'], true) ? $sortDir : 'ASC';
 
 // Helper function untuk toggle sort
-$getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortBy, $sortDir, $perPage) {
+$getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortBy, $sortDir, $perPage, $page) {
     $newDir = ($sortBy === $column && $sortDir === 'ASC') ? 'DESC' : 'ASC';
     $icon = '';
     if ($sortBy === $column) {
         $icon = $sortDir === 'ASC' ? ' ↑' : ' ↓';
     }
-    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&kelas=" . urlencode($kelasFilter) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}";
+    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&kelas=" . urlencode($kelasFilter) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}&p={$page}";
     return "<a href=\"$url\" style=\"text-decoration: none; color: inherit; cursor: pointer;\">{$label}{$icon}</a>";
 };
 
@@ -969,23 +969,23 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                 <ul class="pagination pagination-sm mb-0 justify-content-center">
                     <?php if ($page > 1): ?>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=1">Pertama</a>
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=1">Pertama</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
                         </li>
                     <?php endif; ?>
-                    <?php for ($p = max(1, $page - 2); $p <= min($totalPages, $page + 2); $p++): ?>
-                        <li class="page-item <?= $p === $page ? 'active' : '' ?>">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
+                    <?php for ($pNum = max(1, $page - 2); $pNum <= min($totalPages, $page + 2); $pNum++): ?>
+                        <li class="page-item <?= $pNum === $page ? 'active' : '' ?>">
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $pNum) ?>"><?= e((string) $pNum) ?></a>
                         </li>
                     <?php endfor; ?>
                     <?php if ($page < $totalPages): ?>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&page=<?= e((string) $totalPages) ?>">Terakhir</a>
+                            <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $totalPages) ?>">Terakhir</a>
                         </li>
                     <?php endif; ?>
                 </ul>
