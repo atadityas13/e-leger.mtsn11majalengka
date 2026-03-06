@@ -866,9 +866,12 @@ require dirname(__DIR__) . '/partials/header.php';
         <h3 class="mb-1">Import Data Nilai</h3>
         <p class="text-secondary mb-0">Download template dan upload nilai.</p>
     </div>
-    <div class="card-body">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportNilai">
-            <i class="bi bi-cloud-arrow-up me-1"></i>Import Nilai
+    <div class="card-body d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportTemplate">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Nilai Template
+        </button>
+        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalImportRdm">
+            <i class="bi bi-table me-1"></i>Import Leger RDM
         </button>
     </div>
 </div>
@@ -1097,11 +1100,11 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 </div>
 
-<div class="modal fade" id="modalImportNilai" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalImportTemplate" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header">
-                <h5 class="modal-title">Import Data Nilai</h5>
+                <h5 class="modal-title">Import Nilai Template</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1141,24 +1144,6 @@ require dirname(__DIR__) . '/partials/header.php';
                     </div>
                 </div>
 
-                <div class="card border-0 bg-light mb-3">
-                    <div class="card-body">
-                        <h6 class="mb-2">Import Nilai RDM (Leger per Kelas)</h6>
-                        <p class="text-secondary small mb-2">Format ekspor RDM dengan metadata kelas + header bertingkat bisa langsung diproses. Sistem tetap berpatokan NISN, lalu kelas siswa di aplikasi akan disesuaikan mengikuti kelas di file (kolom kelas pada baris, atau metadata/header jika kolom kelas kosong).</p>
-                        <form method="post" enctype="multipart/form-data" class="row g-3">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="preview_rapor_rdm">
-                            <div class="col-md-8">
-                                <label class="form-label">File Excel RDM (.xlsx/.xls)</label>
-                                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                <button type="submit" class="btn btn-warning w-100">Preview RDM Per Kelas</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
                 <?php if ($semesterAktif === 'GENAP'): ?>
                     <div class="card border-0 bg-light">
                         <div class="card-body">
@@ -1177,6 +1162,38 @@ require dirname(__DIR__) . '/partials/header.php';
                         </div>
                     </div>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportRdm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Leger RDM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary mb-3">Upload file ekspor leger RDM untuk dipreview terlebih dahulu sebelum data disimpan.</p>
+
+                <div class="card border-0 bg-light mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-2">Import Nilai RDM (Leger per Kelas)</h6>
+                        <p class="text-secondary small mb-2">Format ekspor RDM dengan metadata kelas + header bertingkat bisa langsung diproses. Sistem tetap berpatokan NISN, lalu kelas siswa di aplikasi akan disesuaikan mengikuti kelas di file (kolom kelas pada baris, atau metadata/header jika kolom kelas kosong).</p>
+                        <form method="post" enctype="multipart/form-data" class="row g-3">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="preview_rapor_rdm">
+                            <div class="col-md-8">
+                                <label class="form-label">File Excel RDM (.xlsx/.xls)</label>
+                                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-warning w-100">Preview RDM Per Kelas</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
