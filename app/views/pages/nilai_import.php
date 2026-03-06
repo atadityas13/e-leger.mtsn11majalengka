@@ -57,6 +57,176 @@ if (!function_exists('normalize_header')) {
     }
 }
 
+if (!function_exists('parse_import_header')) {
+    function parse_import_header(array $headerRow, array $nisnHeaderCandidates, array $aliasToMapelId, array $mapelByName): array
+    {
+        $nisnIndex = null;
+        $kelasIndex = null;
+        $nomorAbsenIndex = null;
+        $mapelColumns = [];
+
+        foreach ($headerRow as $index => $header) {
+            $headerKey = normalize_header((string) $header);
+            if ($headerKey === '') {
+                continue;
+            }
+
+            if ($nisnIndex === null && in_array($headerKey, $nisnHeaderCandidates, true)) {
+                $nisnIndex = (int) $index;
+                continue;
+            }
+
+            if ($kelasIndex === null && in_array($headerKey, ['KELAS'], true)) {
+                $kelasIndex = (int) $index;
+                continue;
+            }
+
+            if ($nomorAbsenIndex === null && in_array($headerKey, ['NOMOR ABSEN', 'NO ABSEN', 'ABSEN'], true)) {
+                $nomorAbsenIndex = (int) $index;
+                continue;
+            }
+
+            if (isset($aliasToMapelId[$headerKey])) {
+                $mapelColumns[(int) $index] = (int) $aliasToMapelId[$headerKey];
+                continue;
+            }
+
+            if (isset($mapelByName[$headerKey])) {
+                $mapelColumns[(int) $index] = (int) $mapelByName[$headerKey];
+            }
+        }
+
+        return [
+            'nisn_index' => $nisnIndex,
+            'kelas_index' => $kelasIndex,
+            'nomor_absen_index' => $nomorAbsenIndex,
+            'mapel_columns' => $mapelColumns,
+        ];
+    }
+}
+
+if (!function_exists('build_combined_header_row')) {
+    function build_combined_header_row(array $topRow, array $bottomRow): array
+    {
+        $length = max(count($topRow), count($bottomRow));
+        $combined = [];
+
+        for ($i = 0; $i < $length; $i++) {
+            $top = trim((string) ($topRow[$i] ?? ''));
+            $bottom = trim((string) ($bottomRow[$i] ?? ''));
+
+            $topKey = normalize_header($top);
+            $bottomKey = normalize_header($bottom);
+
+            if ($topKey === 'PAI' || $topKey === 'MULOK') {
+                $combined[$i] = $bottom !== '' ? $bottom : $top;
+                continue;
+            }
+
+            if ($top !== '') {
+                $combined[$i] = $top;
+                continue;
+            }
+
+            $combined[$i] = $bottom;
+            if ($bottomKey === '') {
+                $combined[$i] = '';
+            }
+        }
+
+        return $combined;
+    }
+}
+
+if (!function_exists('detect_rdm_kelas')) {
+    function detect_rdm_kelas(array $rows): string
+    {
+        $maxRows = min(20, count($rows));
+
+        for ($r = 0; $r < $maxRows; $r++) {
+            $row = $rows[$r] ?? [];
+            $colCount = count($row);
+            for ($c = 0; $c < $colCount; $c++) {
+                $raw = trim((string) ($row[$c] ?? ''));
+                if ($raw === '') {
+                    continue;
+                }
+
+                if (preg_match('/^\s*KELAS\s*[:\-]\s*(.+)$/i', $raw, $m)) {
+                    return trim((string) $m[1]);
+                }
+
+                if (normalize_header($raw) === 'KELAS') {
+                    for ($next = $c + 1; $next <= $c + 3; $next++) {
+                        $candidate = trim((string) ($row[$next] ?? ''));
+                        if ($candidate !== '') {
+                            return $candidate;
+                        }
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('detect_import_layout')) {
+    function detect_import_layout(array $rows, array $nisnHeaderCandidates, array $aliasToMapelId, array $mapelByName): array
+    {
+        $best = [
+            'score' => -1,
+            'data_start_row' => 1,
+            'nisn_index' => null,
+            'kelas_index' => null,
+            'nomor_absen_index' => null,
+            'mapel_columns' => [],
+        ];
+
+        $maxRows = min(30, count($rows));
+
+        for ($i = 0; $i < $maxRows; $i++) {
+            $single = parse_import_header($rows[$i] ?? [], $nisnHeaderCandidates, $aliasToMapelId, $mapelByName);
+            if ($single['nisn_index'] !== null && count($single['mapel_columns']) > 0) {
+                $singleScore = count($single['mapel_columns']) + ($single['kelas_index'] !== null ? 1 : 0);
+                if ($singleScore > $best['score']) {
+                    $best = [
+                        'score' => $singleScore,
+                        'data_start_row' => $i + 1,
+                        'nisn_index' => $single['nisn_index'],
+                        'kelas_index' => $single['kelas_index'],
+                        'nomor_absen_index' => $single['nomor_absen_index'],
+                        'mapel_columns' => $single['mapel_columns'],
+                    ];
+                }
+            }
+
+            if ($i + 1 >= $maxRows) {
+                continue;
+            }
+
+            $combinedHeader = build_combined_header_row($rows[$i] ?? [], $rows[$i + 1] ?? []);
+            $combined = parse_import_header($combinedHeader, $nisnHeaderCandidates, $aliasToMapelId, $mapelByName);
+
+            if ($combined['nisn_index'] !== null && count($combined['mapel_columns']) > 0) {
+                $combinedScore = count($combined['mapel_columns']) + 2 + ($combined['kelas_index'] !== null ? 1 : 0);
+                if ($combinedScore > $best['score']) {
+                    $best = [
+                        'score' => $combinedScore,
+                        'data_start_row' => $i + 2,
+                        'nisn_index' => $combined['nisn_index'],
+                        'kelas_index' => $combined['kelas_index'],
+                        'nomor_absen_index' => $combined['nomor_absen_index'],
+                        'mapel_columns' => $combined['mapel_columns'],
+                    ];
+                }
+            }
+        }
+
+        return $best;
+    }
+}
+
 if (!function_exists('download_template_excel')) {
     function download_template_excel(string $filename, array $headers): void
     {
@@ -113,8 +283,11 @@ if (!function_exists('download_template_excel')) {
 
 $mapelRows = db()->query('SELECT id, nama_mapel FROM mapel')->fetchAll();
 $mapelByName = [];
+$mapelNameById = [];
 foreach ($mapelRows as $m) {
-    $mapelByName[normalize_header($m['nama_mapel'])] = (int) $m['id'];
+    $mapelId = (int) $m['id'];
+    $mapelByName[normalize_header($m['nama_mapel'])] = $mapelId;
+    $mapelNameById[$mapelId] = (string) $m['nama_mapel'];
 }
 
 $aliasToMapelName = [
@@ -157,6 +330,7 @@ foreach ($aliasToMapelName as $alias => $targetName) {
 }
 
 $nisnHeaderCandidates = ['NISN', 'NISN SISWA', 'NISN S'];
+$rdmPreviewSessionKey = 'rdm_import_preview';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     enforce_csrf('data-nilai');
@@ -186,6 +360,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         download_template_excel('template_import_uam.xlsx', $headers);
     }
 
+    if ($action === 'cancel_preview_rapor_rdm') {
+        unset($_SESSION[$rdmPreviewSessionKey]);
+        set_flash('success', 'Preview import RDM dibatalkan. Tidak ada data yang diubah.');
+        redirect('index.php?page=data-nilai');
+    }
+
+    if ($action === 'confirm_import_rapor_rdm') {
+        $preview = $_SESSION[$rdmPreviewSessionKey] ?? null;
+        if (!is_array($preview) || empty($preview['entries']) || empty($preview['meta'])) {
+            set_flash('error', 'Preview import tidak ditemukan. Silakan upload ulang file RDM dan lakukan preview terlebih dahulu.');
+            redirect('index.php?page=data-nilai');
+        }
+
+        $previewTa = (string) ($preview['meta']['tahun_ajaran'] ?? '');
+        if ($previewTa !== (string) $setting['tahun_ajaran']) {
+            set_flash('error', 'Preview sudah kedaluwarsa karena tahun ajaran aktif berubah. Silakan upload ulang dan preview kembali.');
+            unset($_SESSION[$rdmPreviewSessionKey]);
+            redirect('index.php?page=data-nilai');
+        }
+
+        db()->beginTransaction();
+        try {
+            $stUpdateSiswa = null;
+            $stInsertRapor = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
+                ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
+
+            $updatedSiswaCount = 0;
+            $siswaUpdates = is_array($preview['student_updates'] ?? null) ? $preview['student_updates'] : [];
+            foreach ($siswaUpdates as $nisn => $updateData) {
+                if (!is_array($updateData)) {
+                    continue;
+                }
+
+                $setClauses = [];
+                $params = ['nisn' => (string) $nisn];
+
+                if (array_key_exists('kelas', $updateData)) {
+                    $setClauses[] = 'kelas=:kelas';
+                    $params['kelas'] = (string) $updateData['kelas'];
+                }
+
+                if (array_key_exists('nomor_absen', $updateData) && $updateData['nomor_absen'] !== null && $updateData['nomor_absen'] !== '') {
+                    $setClauses[] = 'nomor_absen=:nomor_absen';
+                    $params['nomor_absen'] = (int) $updateData['nomor_absen'];
+                }
+
+                if (count($setClauses) === 0) {
+                    continue;
+                }
+
+                $updateQuery = 'UPDATE siswa SET ' . implode(', ', $setClauses) . ' WHERE nisn=:nisn';
+                $stUpdateSiswa = db()->prepare($updateQuery);
+                $stUpdateSiswa->execute($params);
+                $updatedSiswaCount++;
+            }
+
+            $processedCount = 0;
+            foreach ($preview['entries'] as $entry) {
+                if (!is_array($entry)) {
+                    continue;
+                }
+
+                $stInsertRapor->execute([
+                    'nisn' => (string) ($entry['nisn'] ?? ''),
+                    'mapel' => (int) ($entry['mapel_id'] ?? 0),
+                    'semester' => (int) ($entry['semester'] ?? 0),
+                    'ta' => (string) $setting['tahun_ajaran'],
+                    'nilai' => (float) ($entry['nilai_baru'] ?? 0),
+                ]);
+                $processedCount++;
+            }
+
+            db()->commit();
+            unset($_SESSION[$rdmPreviewSessionKey]);
+
+            $insertCount = (int) ($preview['meta']['insert_count'] ?? 0);
+            $updateCount = (int) ($preview['meta']['update_count'] ?? 0);
+            set_flash('success', "Import RDM berhasil dikonfirmasi. Diproses: {$processedCount} nilai (insert: {$insertCount}, update: {$updateCount}), update biodata siswa: {$updatedSiswaCount}.");
+        } catch (Throwable $e) {
+            db()->rollBack();
+            set_flash('error', 'Konfirmasi import gagal: ' . $e->getMessage());
+        }
+
+        redirect('index.php?page=data-nilai');
+    }
+
+    $fileRequiredActions = ['import_rapor', 'import_uam', 'preview_rapor_rdm'];
+    if (!in_array($action, $fileRequiredActions, true)) {
+        set_flash('error', 'Aksi import tidak dikenali.');
+        redirect('index.php?page=data-nilai');
+    }
+
     if (!class_exists(IOFactory::class)) {
         set_flash('error', 'PhpSpreadsheet belum terpasang. Jalankan composer install.');
         redirect('index.php?page=data-nilai');
@@ -205,45 +471,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=data-nilai');
     }
 
-    $headerRow = $rows[0];
-    $nisnIndex = null;
-    $kelasIndex = null;
-    $nomorAbsenIndex = null;
-    $mapelColumns = [];
-
-    foreach ($headerRow as $index => $header) {
-        $headerKey = normalize_header((string) $header);
-        if ($headerKey === '') {
-            continue;
-        }
-
-        // Deteksi kolom NISN
-        if ($nisnIndex === null && in_array($headerKey, $nisnHeaderCandidates, true)) {
-            $nisnIndex = (int) $index;
-            continue;
-        }
-
-        // Deteksi kolom Kelas
-        if ($kelasIndex === null && in_array($headerKey, ['KELAS'], true)) {
-            $kelasIndex = (int) $index;
-            continue;
-        }
-
-        // Deteksi kolom Nomor Absen
-        if ($nomorAbsenIndex === null && in_array($headerKey, ['NOMOR ABSEN', 'NO ABSEN', 'ABSEN'], true)) {
-            $nomorAbsenIndex = (int) $index;
-            continue;
-        }
-
-        if (isset($aliasToMapelId[$headerKey])) {
-            $mapelColumns[(int) $index] = (int) $aliasToMapelId[$headerKey];
-            continue;
-        }
-
-        if (isset($mapelByName[$headerKey])) {
-            $mapelColumns[(int) $index] = (int) $mapelByName[$headerKey];
-        }
-    }
+    $layout = detect_import_layout($rows, $nisnHeaderCandidates, $aliasToMapelId, $mapelByName);
+    $nisnIndex = $layout['nisn_index'];
+    $kelasIndex = $layout['kelas_index'];
+    $nomorAbsenIndex = $layout['nomor_absen_index'];
+    $mapelColumns = $layout['mapel_columns'];
+    $dataStartRow = (int) $layout['data_start_row'];
+    $kelasRdmDetected = detect_rdm_kelas($rows);
 
     if ($nisnIndex === null) {
         set_flash('error', 'Kolom NISN tidak ditemukan di header file Excel.');
@@ -255,13 +489,152 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=data-nilai');
     }
 
+    if ($action === 'preview_rapor_rdm') {
+        $stSiswa = db()->prepare('SELECT nisn, nama, current_semester, status_siswa, kelas, nomor_absen FROM siswa WHERE nisn=:nisn LIMIT 1');
+        $stNilaiRapor = db()->prepare('SELECT nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
+
+        $entries = [];
+        $studentUpdates = [];
+        $insertCount = 0;
+        $updateCount = 0;
+
+        $skipNoNisn = 0;
+        $skipNoSiswa = 0;
+        $skipSemester = 0;
+        $skipRange = 0;
+        $skipUnchanged = 0;
+
+        foreach ($rows as $i => $row) {
+            if ($i < $dataStartRow) {
+                continue;
+            }
+
+            $excelRow = $i + 1;
+            $nisn = trim((string) ($row[$nisnIndex] ?? ''));
+            if ($nisn === '') {
+                $skipNoNisn++;
+                continue;
+            }
+
+            $stSiswa->execute(['nisn' => $nisn]);
+            $siswa = $stSiswa->fetch();
+            if (!$siswa || ($siswa['status_siswa'] ?? '') !== 'Aktif') {
+                $skipNoSiswa++;
+                continue;
+            }
+
+            $kelasRow = $kelasIndex !== null ? trim((string) ($row[$kelasIndex] ?? '')) : '';
+            $kelasFinal = $kelasRow !== '' ? $kelasRow : $kelasRdmDetected;
+
+            $semesterSiswa = normalize_current_semester($siswa['current_semester']);
+            $isRaporTarget = in_array($semesterSiswa, $targetRapor, true);
+            if (!$isRaporTarget) {
+                $skipSemester++;
+                continue;
+            }
+
+            $nomorAbsenRaw = $nomorAbsenIndex !== null ? trim((string) ($row[$nomorAbsenIndex] ?? '')) : '';
+            $nomorAbsenFinal = $nomorAbsenRaw !== '' ? (int) $nomorAbsenRaw : null;
+
+            $kelasLama = (string) ($siswa['kelas'] ?? '');
+            $kelasBerubah = $kelasFinal !== '' && normalize_header($kelasFinal) !== normalize_header($kelasLama);
+            $absenLama = $siswa['nomor_absen'] !== null ? (int) $siswa['nomor_absen'] : null;
+            $absenBerubah = $nomorAbsenFinal !== null && $nomorAbsenFinal !== $absenLama;
+
+            if ($kelasBerubah || $absenBerubah) {
+                if (!isset($studentUpdates[$nisn])) {
+                    $studentUpdates[$nisn] = [];
+                }
+                if ($kelasBerubah) {
+                    $studentUpdates[$nisn]['kelas'] = $kelasFinal;
+                }
+                if ($absenBerubah) {
+                    $studentUpdates[$nisn]['nomor_absen'] = $nomorAbsenFinal;
+                }
+            }
+
+            foreach ($mapelColumns as $colIndex => $mapelId) {
+                $rawNilai = $row[$colIndex] ?? null;
+                if ($rawNilai === null || trim((string) $rawNilai) === '') {
+                    continue;
+                }
+
+                $nilai = (float) $rawNilai;
+                if ($nilai < 70 || $nilai > 100) {
+                    $skipRange++;
+                    continue;
+                }
+
+                $stNilaiRapor->execute([
+                    'nisn' => $nisn,
+                    'mapel' => $mapelId,
+                    'semester' => $semesterSiswa,
+                    'ta' => $setting['tahun_ajaran'],
+                ]);
+                $existing = $stNilaiRapor->fetch();
+                $nilaiLama = $existing ? (float) $existing['nilai_angka'] : null;
+
+                if ($nilaiLama !== null && abs($nilaiLama - $nilai) < 0.0001) {
+                    $skipUnchanged++;
+                    continue;
+                }
+
+                $aksi = $nilaiLama === null ? 'INSERT' : 'UPDATE';
+                if ($aksi === 'INSERT') {
+                    $insertCount++;
+                } else {
+                    $updateCount++;
+                }
+
+                $entries[] = [
+                    'excel_row' => $excelRow,
+                    'nisn' => $nisn,
+                    'nama' => (string) ($siswa['nama'] ?? ''),
+                    'kelas_lama' => $kelasLama,
+                    'kelas_baru' => $kelasFinal,
+                    'mapel_id' => (int) $mapelId,
+                    'mapel_nama' => $mapelNameById[(int) $mapelId] ?? ('Mapel #' . (int) $mapelId),
+                    'semester' => $semesterSiswa,
+                    'nilai_lama' => $nilaiLama,
+                    'nilai_baru' => $nilai,
+                    'aksi' => $aksi,
+                ];
+            }
+        }
+
+        if (count($entries) === 0) {
+            set_flash('error', 'Tidak ada data nilai yang bisa diproses untuk preview. Periksa kesesuaian kelas, semester siswa, dan rentang nilai 70-100.');
+            redirect('index.php?page=data-nilai');
+        }
+
+        $_SESSION[$rdmPreviewSessionKey] = [
+            'meta' => [
+                'tahun_ajaran' => (string) $setting['tahun_ajaran'],
+                'kelas_detected' => $kelasRdmDetected,
+                'generated_at' => date('Y-m-d H:i:s'),
+                'insert_count' => $insertCount,
+                'update_count' => $updateCount,
+                'skip_no_nisn' => $skipNoNisn,
+                'skip_no_siswa' => $skipNoSiswa,
+                'skip_semester' => $skipSemester,
+                'skip_range' => $skipRange,
+                'skip_unchanged' => $skipUnchanged,
+            ],
+            'entries' => $entries,
+            'student_updates' => $studentUpdates,
+        ];
+
+        set_flash('success', 'Preview RDM berhasil dibuat. Periksa semua baris pada tabel preview sebelum klik Konfirmasi Import.');
+        redirect('index.php?page=data-nilai');
+    }
+
     db()->beginTransaction();
     try {
         $count = 0;
         $skipRange = 0;
 
         foreach ($rows as $i => $row) {
-            if ($i === 0) {
+            if ($i < $dataStartRow) {
                 continue;
             }
 
@@ -270,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa FROM siswa WHERE nisn=:nisn LIMIT 1');
+            $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas FROM siswa WHERE nisn=:nisn LIMIT 1');
             $stSiswa->execute(['nisn' => $nisn]);
             $siswa = $stSiswa->fetch();
             if (!$siswa || $siswa['status_siswa'] !== 'Aktif') {
@@ -361,6 +734,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     redirect('index.php?page=data-nilai');
+}
+
+$rdmPreview = $_SESSION[$rdmPreviewSessionKey] ?? null;
+if (!is_array($rdmPreview) || !is_array($rdmPreview['meta'] ?? null) || !is_array($rdmPreview['entries'] ?? null)) {
+    $rdmPreview = null;
 }
 
 $monitorSemesterOptions = array_map('strval', semester_upload_target($semesterAktif));
@@ -494,6 +872,88 @@ require dirname(__DIR__) . '/partials/header.php';
         </button>
     </div>
 </div>
+
+<?php if ($rdmPreview): ?>
+    <?php
+    $previewMeta = $rdmPreview['meta'];
+    $previewEntries = $rdmPreview['entries'];
+    $previewStudentUpdates = is_array($rdmPreview['student_updates'] ?? null) ? $rdmPreview['student_updates'] : [];
+    ?>
+    <div class="card border-warning shadow-sm mb-3">
+        <div class="card-header bg-warning-subtle border-0 pt-3">
+            <h3 class="mb-1">Preview Import RDM</h3>
+            <p class="text-secondary mb-0">Periksa semua baris yang akan diproses. Data belum masuk database sebelum tombol konfirmasi ditekan.</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 small mb-3">
+                <div class="col-md-3"><strong>Tahun Ajaran:</strong> <?= e((string) ($previewMeta['tahun_ajaran'] ?? '-')) ?></div>
+                <div class="col-md-3"><strong>Kelas Terdeteksi (Header):</strong> <?= e((string) (($previewMeta['kelas_detected'] ?? '') !== '' ? $previewMeta['kelas_detected'] : '-')) ?></div>
+                <div class="col-md-3"><strong>Insert:</strong> <?= e((string) ((int) ($previewMeta['insert_count'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Update:</strong> <?= e((string) ((int) ($previewMeta['update_count'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Update Biodata Siswa:</strong> <?= e((string) count($previewStudentUpdates)) ?></div>
+                <div class="col-md-3"><strong>Dilewati tanpa NISN:</strong> <?= e((string) ((int) ($previewMeta['skip_no_nisn'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Dilewati siswa nonaktif/tidak ditemukan:</strong> <?= e((string) ((int) ($previewMeta['skip_no_siswa'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Dilewati semester tidak sesuai:</strong> <?= e((string) ((int) ($previewMeta['skip_semester'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Dilewati nilai di luar 70-100:</strong> <?= e((string) ((int) ($previewMeta['skip_range'] ?? 0))) ?></div>
+                <div class="col-md-3"><strong>Dilewati karena nilai sama:</strong> <?= e((string) ((int) ($previewMeta['skip_unchanged'] ?? 0))) ?></div>
+            </div>
+
+            <div class="d-flex gap-2 mb-3">
+                <form method="post">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="confirm_import_rapor_rdm">
+                    <button type="submit" class="btn btn-success">Konfirmasi Import RDM</button>
+                </form>
+                <form method="post">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="cancel_preview_rapor_rdm">
+                    <button type="submit" class="btn btn-outline-secondary">Batalkan Preview</button>
+                </form>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th style="width: 50px;">No</th>
+                        <th>Baris Excel</th>
+                        <th>NISN</th>
+                        <th>Nama</th>
+                        <th>Mapel</th>
+                        <th>Semester</th>
+                        <th>Kelas Lama</th>
+                        <th>Kelas Baru</th>
+                        <th>Nilai Lama</th>
+                        <th>Nilai Baru</th>
+                        <th>Aksi</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php $previewNo = 1; foreach ($previewEntries as $entry): ?>
+                        <tr>
+                            <td><?= e((string) $previewNo++) ?></td>
+                            <td><?= e((string) ($entry['excel_row'] ?? '-')) ?></td>
+                            <td><?= e((string) ($entry['nisn'] ?? '-')) ?></td>
+                            <td><?= e((string) ($entry['nama'] ?? '-')) ?></td>
+                            <td><?= e((string) ($entry['mapel_nama'] ?? '-')) ?></td>
+                            <td><?= e((string) ($entry['semester'] ?? '-')) ?></td>
+                            <td><?= e((string) (($entry['kelas_lama'] ?? '') !== '' ? $entry['kelas_lama'] : '-')) ?></td>
+                            <td><?= e((string) (($entry['kelas_baru'] ?? '') !== '' ? $entry['kelas_baru'] : '-')) ?></td>
+                            <td><?= e((string) (($entry['nilai_lama'] ?? null) !== null ? number_format((float) $entry['nilai_lama'], 2) : '-')) ?></td>
+                            <td><?= e((string) number_format((float) ($entry['nilai_baru'] ?? 0), 2)) ?></td>
+                            <td>
+                                <span class="badge <?= (($entry['aksi'] ?? '') === 'INSERT') ? 'text-bg-primary' : 'text-bg-warning' ?>">
+                                    <?= e((string) ($entry['aksi'] ?? '-')) ?>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-3">
@@ -676,6 +1136,24 @@ require dirname(__DIR__) . '/partials/header.php';
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <button type="submit" class="btn btn-success w-100">Import Rapor</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card border-0 bg-light mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-2">Import Nilai RDM (Leger per Kelas)</h6>
+                        <p class="text-secondary small mb-2">Format ekspor RDM dengan metadata kelas + header bertingkat bisa langsung diproses. Sistem tetap berpatokan NISN, lalu kelas siswa di aplikasi akan disesuaikan mengikuti kelas di file (kolom kelas pada baris, atau metadata/header jika kolom kelas kosong).</p>
+                        <form method="post" enctype="multipart/form-data" class="row g-3">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="preview_rapor_rdm">
+                            <div class="col-md-8">
+                                <label class="form-label">File Excel RDM (.xlsx/.xls)</label>
+                                <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-warning w-100">Preview RDM Per Kelas</button>
                             </div>
                         </form>
                     </div>
