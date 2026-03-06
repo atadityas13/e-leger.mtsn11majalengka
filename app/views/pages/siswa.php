@@ -1347,14 +1347,18 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                         $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
                             (SELECT AVG(nr.nilai_angka)
                              FROM nilai_rapor nr
-                             WHERE nr.nisn=:nisn AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5 AND nr.tahun_ajaran=:ta) AS rata_rapor,
+                             WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5 AND nr.tahun_ajaran=:ta) AS rata_rapor,
                             (SELECT nu.nilai_angka
                              FROM nilai_uam nu
-                             WHERE nu.nisn=:nisn AND nu.mapel_id=m.id
+                             WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
                              LIMIT 1) AS nilai_uam
                             FROM mapel m
                             ORDER BY m.id');
-                        $stIjazah->execute(['nisn' => $s['nisn'], 'ta' => $setting['tahun_ajaran']]);
+                        $stIjazah->execute([
+                            'nisn_rapor' => $s['nisn'],
+                            'nisn_uam' => $s['nisn'],
+                            'ta' => $setting['tahun_ajaran'],
+                        ]);
                         $nilaiIjazahRows = $stIjazah->fetchAll();
 
                         $ijazahShownRows = [];
