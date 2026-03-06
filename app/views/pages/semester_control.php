@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $setting = setting_akademik();
-$semesterList = db()->query('SELECT id, tahun_ajaran, semester_aktif FROM pengaturan_akademik ORDER BY tahun_ajaran DESC, FIELD(semester_aktif, "GANJIL", "GENAP")')->fetchAll();
+$semesterList = db()->query('SELECT id, tahun_ajaran, semester_aktif FROM pengaturan_akademik ORDER BY id DESC')->fetchAll();
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>

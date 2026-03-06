@@ -94,9 +94,9 @@ if (!function_exists('download_template_siswa')) {
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Template Siswa');
 
-        $headers = ['NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Kelas', 'Nomor Absen', 'Current Semester', 'Status Siswa'];
+        $headers = ['No', 'NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Kelas', 'Nomor Absen', 'Current Semester', 'Status Siswa'];
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->fromArray(['0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', 'VIII-A', '5', '1', 'Aktif'], null, 'A2');
+        $sheet->fromArray(['1', '0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', 'VIII-A', '5', '1', 'Aktif'], null, 'A2');
 
         for ($index = 1; $index <= count($headers); $index++) {
             $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
@@ -107,12 +107,13 @@ if (!function_exists('download_template_siswa')) {
         $guideSheet->fromArray([
             ['PETUNJUK TEMPLATE SISWA'],
             ['1. Jangan ubah nama header pada baris pertama.'],
-            ['2. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
-            ['3. Kolom Kelas dan Nomor Absen opsional (format: VIII-A, nomor 1-50).'],
-            ['4. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
-            ['5. Current Semester boleh 1-5 atau Akhir. Jika kosong/invalid, otomatis jadi 1.'],
-            ['6. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
-            ['7. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
+            ['2. Kolom No: nomor urut (opsional - untuk referensi).'],
+            ['3. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
+            ['4. Kolom Kelas dan Nomor Absen opsional (format: VIII-A, nomor 1-50).'],
+            ['5. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
+            ['6. Current Semester boleh 1-5 atau Akhir. Jika kosong/invalid, otomatis jadi 1.'],
+            ['7. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
+            ['8. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
         ], null, 'A1');
         $guideSheet->getColumnDimension('A')->setWidth(120);
 
