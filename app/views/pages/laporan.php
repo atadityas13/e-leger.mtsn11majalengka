@@ -640,6 +640,11 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="tab-content">
             <!-- Tab Individu -->
             <div class="tab-pane fade show active" id="individu-tab">
+                <?php if (empty($alumniList)): ?>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
+                    </div>
+                <?php else: ?>
                 <form method="post" id="formTranskrip" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="transkrip">
@@ -662,10 +667,15 @@ require dirname(__DIR__) . '/partials/header.php';
                         </button>
                     </div>
                 </form>
-            </div>
+                <?php endif; ?>
 
             <!-- Tab Bulk -->
             <div class="tab-pane fade" id="bulk-tab">
+                <?php if (empty($alumniList)): ?>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
+                    </div>
+                <?php else: ?>
                 <form method="post" id="formBulkTranskrip" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="bulk_transkrip">
@@ -694,6 +704,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <div class="alert alert-info mt-3 mb-0">
                     <i class="bi bi-info-circle"></i> Cetak bulk akan menghasilkan satu file PDF berisi semua transkrip alumni pada angkatan yang dipilih.
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -735,6 +746,22 @@ let targetFormId = '';
 
 function showModalTTD(formId) {
     targetFormId = formId;
+    
+    // Validasi pilihan sebelum buka modal
+    if (targetFormId === 'formTranskrip') {
+        const nisn = document.getElementById('selectAlumni').value;
+        if (!nisn) {
+            alert('Silakan pilih alumni terlebih dahulu!');
+            return;
+        }
+    } else if (targetFormId === 'formBulkTranskrip') {
+        const angkatan = document.querySelector('select[name="angkatan"]').value;
+        if (!angkatan) {
+            alert('Silakan pilih angkatan terlebih dahulu!');
+            return;
+        }
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('modalTTD'));
     modal.show();
 }
