@@ -437,10 +437,11 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <div class="table-wrap">
             <table>
-                <thead><tr><th><?php echo $getSortLink('nisn', 'NISN'); ?></th><th><?php echo $getSortLink('nama', 'Nama'); ?></th><th>Kelas</th><th>No. Absen</th><th><?php echo $getSortLink('current_semester', 'Semester'); ?></th><th><?php echo $getSortLink('status_siswa', 'Status'); ?></th><th class="text-end">Aksi</th></tr></thead>
+                <thead><tr><th style="width: 50px;">No</th><th><?php echo $getSortLink('nisn', 'NISN'); ?></th><th><?php echo $getSortLink('nama', 'Nama'); ?></th><th>Kelas</th><th>No. Absen</th><th><?php echo $getSortLink('current_semester', 'Semester'); ?></th><th><?php echo $getSortLink('status_siswa', 'Status'); ?></th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
-                <?php foreach ($siswa as $s): ?>
+                <?php $noCounter = $offset + 1; foreach ($siswa as $s): ?>
                     <tr>
+                        <td><?= e((string) $noCounter++) ?></td>
                         <td><?= e($s['nisn']) ?></td>
                         <td><?= e($s['nama']) ?></td>
                         <td><?= e($s['kelas'] ?? '-') ?></td>

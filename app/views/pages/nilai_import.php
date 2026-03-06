@@ -381,9 +381,9 @@ $mapelCount = (int) (db()->query('SELECT COUNT(*) c FROM mapel')->fetch()['c'] ?
 
 // Filter students by current_semester matching the selected semester filter
 if ($monitorSemester === 'UAM') {
-    $students = db()->query("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester = 6 ORDER BY nama")->fetchAll();
+    $students = db()->query("SELECT nisn, nis, nama, current_semester, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND current_semester = 6 ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama")->fetchAll();
 } else {
-    $stStudents = db()->prepare("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem ORDER BY nama");
+    $stStudents = db()->prepare("SELECT nisn, nis, nama, current_semester, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama");
     $stStudents->execute(['sem' => (int)$monitorSemester]);
     $students = $stStudents->fetchAll();
 }
@@ -425,6 +425,8 @@ foreach ($students as $student) {
         'nisn' => $student['nisn'],
         'nis' => $student['nis'],
         'nama' => $student['nama'],
+        'kelas' => $student['kelas'] ?? '-',
+        'nomor_absen' => $student['nomor_absen'] !== null ? (string) $student['nomor_absen'] : '-',
         'current_semester' => current_semester_label($student['current_semester']),
         'entry_count' => $entryCount,
         'status_label' => $statusLabel,
@@ -496,21 +498,33 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-3">
         <h3 class="mb-1">Monitoring Upload Nilai (TA <?= e($setting['tahun_ajaran']) ?>)</h3>
-        <p class="text-secondary mb-0">Filter semester <?= e(implode('/', $monitorSemesterOptions)) ?> serta status sudah terupload atau belum terupload.</p>
+        <p class="text-secondary mb-0">Filter berdasarkan semester dan status upload, serta cari berdasarkan nama/NIS/NISN siswa.</p>
     </div>
     <div class="card-body">
         <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="page" value="data-nilai">
-            <input type="hidden" name="semester_view" value="<?= e($monitorSemester) ?>">
-            <input type="hidden" name="status_upload" value="<?= e($monitorStatus) ?>">
-            <div class="col-md-8">
+            <div class="col-md-2">
+                <select name="semester_view" class="form-select form-select-sm">
+                    <?php foreach ($monitorSemesterOptions as $semOpt): ?>
+                        <option value="<?= e($semOpt) ?>" <?= $monitorSemester === $semOpt ? 'selected' : '' ?>>Semester <?= e($semOpt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status_upload" class="form-select form-select-sm">
+                    <option value="all" <?= $monitorStatus === 'all' ? 'selected' : '' ?>>Semua Status</option>
+                    <option value="uploaded" <?= $monitorStatus === 'uploaded' ? 'selected' : '' ?>>Sudah Upload</option>
+                    <option value="not_uploaded" <?= $monitorStatus === 'not_uploaded' ? 'selected' : '' ?>>Belum Upload</option>
+                </select>
+            </div>
+            <div class="col-md-4">
                 <input type="text" name="search_monitoring" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($monitorSearch) ?>">
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
             </div>
             <div class="col-md-2">
-                <a href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>" class="btn btn-outline-secondary btn-sm w-100">Reset Cari</a>
+                <a href="index.php?page=data-nilai" class="btn btn-outline-secondary btn-sm w-100">Reset Filter</a>
             </div>
         </form>
 
@@ -539,10 +553,13 @@ require dirname(__DIR__) . '/partials/header.php';
             <table>
                 <thead>
                 <tr>
+                    <th style="width: 50px;">No</th>
                     <th><?php echo $getMonitorSortLink('nisn', 'NISN'); ?></th>
                     <th><?php echo $getMonitorSortLink('nis', 'NIS'); ?></th>
                     <th><?php echo $getMonitorSortLink('nama', 'Nama'); ?></th>
-                    <th><?php echo $getMonitorSortLink('current_semester', 'Current Semester'); ?></th>
+                    <th>Kelas</th>
+                    <th>No. Absen</th>
+                    <th><?php echo $getMonitorSortLink('current_semester', 'Semester Aktif'); ?></th>
                     <th>Jumlah Entri</th>
                     <th><?php echo $getMonitorSortLink('status_label', 'Status'); ?></th>
                     <th class="text-end">Aksi</th>
@@ -551,14 +568,17 @@ require dirname(__DIR__) . '/partials/header.php';
                 <tbody>
                 <?php if (count($rowsMonitorPaginated) === 0): ?>
                     <tr>
-                        <td colspan="7" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
+                        <td colspan="10" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($rowsMonitorPaginated as $row): ?>
+                    <?php $noCounter = $monitorOffset + 1; foreach ($rowsMonitorPaginated as $row): ?>
                         <tr>
+                            <td><?= e((string) $noCounter++) ?></td>
                             <td><?= e($row['nisn']) ?></td>
                             <td><?= e($row['nis']) ?></td>
                             <td><?= e($row['nama']) ?></td>
+                            <td><?= e($row['kelas']) ?></td>
+                            <td><?= e($row['nomor_absen']) ?></td>
                             <td><?= e($row['current_semester']) ?></td>
                             <td><?= e((string) $row['entry_count']) ?></td>
                             <td>
