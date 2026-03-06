@@ -1235,6 +1235,9 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">UAM</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-ijazah-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#ijazah-<?= e($s['nisn']) ?>" type="button">Nilai Ijazah</button>
+                    </li>
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
                     <?php for ($sem = 1; $sem <= 5; $sem++): 
@@ -1337,6 +1340,79 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                             </div>
                         <?php else: ?>
                             <p class="text-secondary text-center">Belum ada nilai UAM.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php
+                        $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
+                            (SELECT AVG(nr.nilai_angka)
+                             FROM nilai_rapor nr
+                             WHERE nr.nisn=:nisn AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5 AND nr.tahun_ajaran=:ta) AS rata_rapor,
+                            (SELECT nu.nilai_angka
+                             FROM nilai_uam nu
+                             WHERE nu.nisn=:nisn AND nu.mapel_id=m.id
+                             LIMIT 1) AS nilai_uam
+                            FROM mapel m
+                            ORDER BY m.id');
+                        $stIjazah->execute(['nisn' => $s['nisn'], 'ta' => $setting['tahun_ajaran']]);
+                        $nilaiIjazahRows = $stIjazah->fetchAll();
+
+                        $ijazahShownRows = [];
+                        $totalNilaiIjazah = 0.0;
+                        foreach ($nilaiIjazahRows as $ij) {
+                            $rataRapor = $ij['rata_rapor'] !== null ? (float) $ij['rata_rapor'] : null;
+                            $nilaiUamItem = $ij['nilai_uam'] !== null ? (float) $ij['nilai_uam'] : null;
+                            if ($rataRapor === null || $nilaiUamItem === null) {
+                                continue;
+                            }
+
+                            $nilaiIjazah = hitung_nilai_ijazah($rataRapor, $nilaiUamItem);
+                            $ijazahShownRows[] = [
+                                'mapel' => $ij['nama_mapel'],
+                                'rata_rapor' => $rataRapor,
+                                'nilai_uam' => $nilaiUamItem,
+                                'nilai_ijazah' => $nilaiIjazah,
+                            ];
+                            $totalNilaiIjazah += $nilaiIjazah;
+                        }
+
+                        $rataIjazahAkhir = count($ijazahShownRows) > 0 ? ($totalNilaiIjazah / count($ijazahShownRows)) : 0;
+                    ?>
+                    <div class="tab-pane fade" id="ijazah-<?= e($s['nisn']) ?>">
+                        <h6 class="mb-3">Nilai Ijazah (Rata Rapor 1-5 x 60% + UAM x 40%)</h6>
+                        <?php if (count($ijazahShownRows) > 0): ?>
+                            <div class="table-wrap">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Mata Pelajaran</th>
+                                            <th class="text-center">Rata Rapor (1-5)</th>
+                                            <th class="text-center">UAM</th>
+                                            <th class="text-center">Nilai Ijazah</th>
+                                            <th class="text-center">Terbilang</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($ijazahShownRows as $ij): ?>
+                                            <tr>
+                                                <td><?= e($ij['mapel']) ?></td>
+                                                <td class="text-center"><?= e((string) round($ij['rata_rapor'], 2)) ?></td>
+                                                <td class="text-center"><?= e((string) round($ij['nilai_uam'])) ?></td>
+                                                <td class="text-center"><?= e((string) round($ij['nilai_ijazah'])) ?></td>
+                                                <td class="text-center"><?= e(ucwords(terbilang_nilai($ij['nilai_ijazah']))) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        <tr class="table-secondary fw-bold">
+                                            <td>Rata-Rata Ijazah</td>
+                                            <td colspan="2"></td>
+                                            <td class="text-center"><?= e((string) round($rataIjazahAkhir)) ?></td>
+                                            <td class="text-center"><?= e(ucwords(terbilang_nilai($rataIjazahAkhir))) ?></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-secondary text-center">Belum ada data cukup untuk menghitung nilai ijazah (butuh rapor semester 1-5 dan nilai UAM per mapel).</p>
                         <?php endif; ?>
                     </div>
                 </div>

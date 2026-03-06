@@ -66,14 +66,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $semesterPilihan = 5; // Akhir includes semesters 1-5
         }
 
-        // Ambil siswa angkatan berdasarkan semester target (siswa yang current_semester >= target)
-        $stSiswa = db()->prepare("SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester >= :semester_target ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama");
-        $stSiswa->execute(['semester_target' => $semesterPilihan]);
+        // Jika pilih Akhir, hanya ambil siswa yang benar-benar sudah mencapai semester akhir (6).
+        $sqlSiswa = "SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif'";
+        $paramsSiswa = [];
+        if ($isAkhir) {
+            $sqlSiswa .= " AND current_semester = 6";
+        } else {
+            $sqlSiswa .= " AND current_semester >= :semester_target";
+            $paramsSiswa['semester_target'] = $semesterPilihan;
+        }
+        $sqlSiswa .= " ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama";
+
+        $stSiswa = db()->prepare($sqlSiswa);
+        $stSiswa->execute($paramsSiswa);
         $angkatanSiswa = $stSiswa->fetchAll();
 
         if (count($angkatanSiswa) === 0) {
-            $semesterLabel = $isAkhir ? 'Akhir' : (string) $semesterPilihan;
-            set_flash('error', 'Tidak ada siswa aktif yang sudah mencapai semester ' . $semesterLabel . '.');
+            if ($isAkhir) {
+                set_flash('error', 'Tidak ada siswa aktif di semester Akhir.');
+            } else {
+                set_flash('error', 'Tidak ada siswa aktif yang sudah mencapai semester ' . $semesterPilihan . '.');
+            }
             redirect('index.php?page=ekspor-cetak');
         }
 
@@ -320,16 +333,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
             // Data Nilai Ijazah untuk siswa angkatan
-            // Formula: (rata_rapor * 0.6) + (nilai_uam * 0.4)
+            // Formula: (rata-rata rapor semester 1-5 * 0.6) + (nilai UAM * 0.4)
             $siswaNo = 1;
             $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
             foreach ($angkatanSiswa as $siswa) {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
-                // Ambil nilai rapor semester 5 siswa
-                $stRapor5 = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=5 AND tahun_ajaran=:ta");
-                $stRapor5->execute(['nisn' => $siswa['nisn'], 'ta' => $tahunAjaranAktif]);
-                $nilaiRapor5 = $stRapor5->fetchAll(\PDO::FETCH_KEY_PAIR);
+                // Ambil rata-rata nilai rapor semester 1-5 per mapel
+                $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 5 AND tahun_ajaran=:ta GROUP BY mapel_id");
+                $stRataRapor->execute(['nisn' => $siswa['nisn'], 'ta' => $tahunAjaranAktif]);
+                $rataRaporByMapel = $stRataRapor->fetchAll(\PDO::FETCH_KEY_PAIR);
 
                 // Ambil nilai UAM siswa
                 $stUam = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_uam WHERE nisn=:nisn");
@@ -339,11 +352,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Hitung nilai ijazah per mapel
                 $nilaiIjazahValues = [];
                 foreach ($mapelList as $m) {
-                    $rapor5 = $nilaiRapor5[$m['id']] ?? null;
+                    $rataRapor = $rataRaporByMapel[$m['id']] ?? null;
                     $uam = $nilaiUam[$m['id']] ?? null;
 
-                    if ($rapor5 !== null && $uam !== null) {
-                        $nilaiIjazah = round(((float) $rapor5 * 0.6) + ((float) $uam * 0.4), 0);
+                    if ($rataRapor !== null && $uam !== null) {
+                        $nilaiIjazah = round(hitung_nilai_ijazah((float) $rataRapor, (float) $uam), 0);
                         $nilaiIjazahValues[] = $nilaiIjazah;
                         $rowData[] = (int)$nilaiIjazah;
                     } else {
@@ -444,7 +457,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 </select>
                 <small class="text-secondary d-block mt-2">
                     Sistem mengekspor nilai dari semester 1 sampai semester yang dipilih.
-                    Siswa yang disertakan adalah siswa aktif yang sudah mencapai semester pilihan (current_semester >= semester dipilih).
+                    Jika memilih Akhir, hanya siswa aktif dengan current_semester = 6 yang disertakan.
                 </small>
             </div>
             <div class="col-md-3">
