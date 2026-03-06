@@ -724,19 +724,19 @@ $searchQuery = trim($_GET['search'] ?? '');
 $kelasFilter = trim($_GET['kelas'] ?? '');
 $perPage = (int) ($_GET['per_page'] ?? 20);
 $perPage = in_array($perPage, [20, 30, 50, 100, 999999], true) ? $perPage : 20;
-$page = max(1, (int) ($_GET['p'] ?? 1));
+$pageNum = max(1, (int) ($_GET['p'] ?? 1));
 $sortBy = $_GET['sort_by'] ?? 'kelas,nomor_absen,nama';
 $sortDir = strtoupper($_GET['sort_dir'] ?? 'ASC');
 $sortDir = in_array($sortDir, ['ASC', 'DESC'], true) ? $sortDir : 'ASC';
 
 // Helper function untuk toggle sort
-$getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortBy, $sortDir, $perPage, $page) {
+$getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortBy, $sortDir, $perPage, $pageNum) {
     $newDir = ($sortBy === $column && $sortDir === 'ASC') ? 'DESC' : 'ASC';
     $icon = '';
     if ($sortBy === $column) {
         $icon = $sortDir === 'ASC' ? ' ↑' : ' ↓';
     }
-    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&kelas=" . urlencode($kelasFilter) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}&p={$page}";
+    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&kelas=" . urlencode($kelasFilter) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}&p={$pageNum}";
     return "<a href=\"$url\" style=\"text-decoration: none; color: inherit; cursor: pointer;\">{$label}{$icon}</a>";
 };
 
@@ -760,8 +760,8 @@ $countStmt = db()->prepare("SELECT COUNT(*) as total FROM siswa {$where}");
 $countStmt->execute($params);
 $totalRecords = (int) $countStmt->fetch()['total'];
 $totalPages = (int) ($perPage >= 999999 ? 1 : ceil($totalRecords / $perPage));
-$page = (int) min($page, max(1, $totalPages));
-$offset = ($page - 1) * $perPage;
+$pageNum = (int) min($pageNum, max(1, $totalPages));
+$offset = ($pageNum - 1) * $perPage;
 
 $sql = "SELECT * FROM siswa {$where} ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama ASC LIMIT {$offset}, {$perPage}";
 $stmt = db()->prepare($sql);
@@ -907,7 +907,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
         </form>
 
         <div class="row mb-2 align-items-center small">
-            <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalRecords)) ?> siswa <?php if ($totalPages > 1): ?>(Halaman <?= e((string) $page) ?> dari <?= e((string) $totalPages) ?>)<?php endif; ?></div>
+            <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalRecords)) ?> siswa <?php if ($totalPages > 1): ?>(Halaman <?= e((string) $pageNum) ?> dari <?= e((string) $totalPages) ?>)<?php endif; ?></div>
             <div class="col-md-6 text-end">
                 <select id="perPageSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
                     <option value="20" <?= $perPage === 20 ? 'selected' : '' ?>>20 per halaman</option>
@@ -967,22 +967,22 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
         <?php if ($totalPages > 1): ?>
             <nav class="mt-3">
                 <ul class="pagination pagination-sm mb-0 justify-content-center">
-                        <?php if ($page > 1): ?>
+                        <?php if ($pageNum > 1): ?>
                             <li class="page-item">
                                 <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=1">Pertama</a>
                             </li>
                             <li class="page-item">
-                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page - 1)) ?>">Sebelumnya</a>
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($pageNum - 1)) ?>">Sebelumnya</a>
                             </li>
                         <?php endif; ?>
-                        <?php for ($p = max(1, $page - 2); $p <= min($totalPages, $page + 2); $p++): ?>
-                            <li class="page-item <?= $p === $page ? 'active' : '' ?>">
+                        <?php for ($p = max(1, $pageNum - 2); $p <= min($totalPages, $pageNum + 2); $p++): ?>
+                            <li class="page-item <?= $p === $pageNum ? 'active' : '' ?>">
                                 <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
                             </li>
                         <?php endfor; ?>
-                        <?php if ($page < $totalPages): ?>
+                        <?php if ($pageNum < $totalPages): ?>
                             <li class="page-item">
-                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($page + 1)) ?>">Selanjutnya</a>
+                                <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) ($pageNum + 1)) ?>">Selanjutnya</a>
                             </li>
                             <li class="page-item">
                                 <a class="page-link" href="index.php?page=siswa&search=<?= e($searchQuery) ?>&kelas=<?= e($kelasFilter) ?>&sort_by=<?= e($sortBy) ?>&sort_dir=<?= e($sortDir) ?>&per_page=<?= e((string) $perPage) ?>&p=<?= e((string) $totalPages) ?>">Terakhir</a>
