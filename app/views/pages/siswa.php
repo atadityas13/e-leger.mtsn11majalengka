@@ -81,21 +81,36 @@ if (!function_exists('normalize_siswa_header')) {
     function normalize_siswa_header(string $header): string {
         $header = strtoupper(trim($header));
         $header = preg_replace('/\s+/', ' ', $header);
-        $header = str_replace(['NO.', 'NO ', ' ', '-', '_'], ['NO', 'NO', '', '', ''], $header);
+        $header = str_replace(['NO.', '-', '_'], ['NO', '', ''], $header);
 
-        $map = [
-            'NOABSEN' => 'NO ABSEN',
-            'NOINDUK' => 'NIS',
+        // Direct exact matches first
+        $exactMap = [
+            'NO ABSEN' => 'NO ABSEN',
+            'NIS' => 'NIS',
             'NISN' => 'NISN',
             'NAMA' => 'NAMA',
-            'NAMASANTRI' => 'NAMA',
-            'TTLTEMPATLAHAIRTANGGALLAHIR' => 'TTL',
+            'TTL' => 'TTL',
             'KELAS' => 'KELAS',
-            'TINGKATAN' => 'KELAS',
+            'L/P' => 'GENDER',
+            'JENIS KELAMIN' => 'GENDER',
         ];
 
-        foreach ($map as $from => $to) {
-            if (strpos($header, str_replace(' ', '', $from)) !== false) {
+        if (isset($exactMap[$header])) {
+            return $exactMap[$header];
+        }
+
+        // Fuzzy substring matches for variants
+        $fuzzyMap = [
+            'NOINDUK' => 'NIS',
+            'NAMASANTRI' => 'NAMA',
+            'TINGKATAN' => 'KELAS',
+            'TEMPATLAHAIRTANGGALLAHIR' => 'TTL',
+            'TTLTEMPATLAHAIRTANGGALLAHIR' => 'TTL',
+        ];
+
+        foreach ($fuzzyMap as $from => $to) {
+            $headerNormalized = str_replace(' ', '', $header);
+            if (strpos($headerNormalized, $from) !== false) {
                 return $to;
             }
         }
@@ -204,6 +219,68 @@ if (!function_exists('download_template_siswa')) {
         $writer->save('php://output');
         exit;
     }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'download_template_siswa_rdm') {
+    enforce_csrf('siswa');
+    
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Data Siswa RDM');
+    
+    $headers = ['NO ABSEN', 'NIS', 'NISN', 'NAMA', 'L/P', 'TTL', 'KELAS'];
+    foreach ($headers as $index => $header) {
+        $sheet->setCellValueByColumnAndRow($index + 1, 1, $header);
+        $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
+    }
+    
+    $sheet->getStyle('1:1')->getFont()->setBold(true);
+    $sheet->getStyle('1:1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD3D3D3');
+    
+    $examples = [
+        ['1', '250001', '3134412140', 'AJENG SRI PUTRI', 'L', 'BANDUNG, 28 April 2013', 'VII-1'],
+        ['2', '250002', '3126316180', 'HAURA LATIFA', 'P', 'JAKARTA, 29 Agustus 2012', 'VII-1'],
+        ['3', '250003', '3129026954', 'CHIKA NUIA PUTRI', 'P', 'MAJALENGKA, 25 September 2012', 'VII-1'],
+    ];
+    
+    foreach ($examples as $rowIndex => $rowData) {
+        foreach ($rowData as $colIndex => $value) {
+            $sheet->setCellValueByColumnAndRow($colIndex + 1, $rowIndex + 2, $value);
+        }
+    }
+    
+    $sheet->getStyle('A2:G4')->getAlignment()->setWrapText(true);
+    
+    $guideSheet = $spreadsheet->createSheet();
+    $guideSheet->setTitle('Panduan');
+    $guideSheet->setCellValue('A1', 'Panduan Format Import Siswa RDM');
+    $guideSheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+    $guideSheet->setCellValue('A3', 'Kolom Wajib:');
+    $guideSheet->getStyle('A3')->getFont()->setBold(true);
+    $guideSheet->setCellValue('A4', '• NO ABSEN: Nomor urut siswa di kelas (1, 2, 3, ...) atau bisa dikosongkan');
+    $guideSheet->setCellValue('A5', '• NIS: Nomor Induk Sekolah (wajib, unik, tidak boleh duplikat)');
+    $guideSheet->setCellValue('A6', '• NISN: Nomor Induk Siswa Nasional (wajib, unik, digunakan sebagai anchor update)');
+    $guideSheet->setCellValue('A7', '• NAMA: Nama lengkap siswa (wajib)');
+    $guideSheet->setCellValue('A8', '• L/P: Jenis Kelamin - L untuk Laki-laki, P untuk Perempuan (opsional)');
+    $guideSheet->setCellValue('A9', '• TTL: Tempat Lahir, Tanggal Lahir - format "KOTA, DD Bulan YYYY" misalnya "BANDUNG, 28 April 2013" (wajib)');
+    $guideSheet->setCellValue('A10', '• KELAS: Kelas siswa misalnya VII-1, VIII-2, IX-1 (wajib)');
+    $guideSheet->setCellValue('A12', 'Catatan Penting:');
+    $guideSheet->getStyle('A12')->getFont()->setBold(true);
+    $guideSheet->setCellValue('A13', '• Data baru akan di-INSERT jika NISN belum ada di database');
+    $guideSheet->setCellValue('A14', '• Data lama akan di-UPDATE jika NISN sudah terdaftar');
+    $guideSheet->setCellValue('A15', '• Baris dengan data kosong atau tidak lengkap akan di-SKIP');
+    $guideSheet->setCellValue('A16', '• Format tanggal harus tepat: DD Bulan YYYY (misalnya 28 April 2013)');
+    $guideSheet->getColumnDimension('A')->setWidth(150);
+    $guideSheet->getStyle('A4:A16')->getAlignment()->setWrapText(true);
+    
+    $filename = 'Template-Siswa-RDM-' . date('YmdHis') . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header("Content-Disposition: attachment; filename=\"{$filename}\"");
+    header('Cache-Control: max-age=0');
+    
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
 }
 
 $siswaRdmPreviewSessionKey = 'siswa_rdm_import_preview';
@@ -701,10 +778,17 @@ require dirname(__DIR__) . '/partials/header.php';
         <h3 class="mb-1">Import Data Siswa dari Excel</h3>
         <p class="text-secondary mb-0">Unduh template dan upload data siswa</p>
     </div>
-    <div class="card-body">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportSiswa">
-            <i class="bi bi-cloud-arrow-up me-1"></i>Import Siswa
-        </button>
+    <div class="card-body row g-2">
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportSiswaTemplate">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Import Template Siswa
+            </button>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalImportSiswaRdm">
+                <i class="bi bi-cloud-arrow-up me-1"></i>Import Siswa RDM
+            </button>
+        </div>
     </div>
 </div>
 
@@ -961,54 +1045,98 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
     </div>
 </div>
 
-<div class="modal fade" id="modalImportSiswa" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalImportSiswaTemplate" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header">
-                <h5 class="modal-title">Import Data Siswa</h5>
+                <h5 class="modal-title">Import Template Siswa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-secondary mb-3">Unduh template, isi data siswa, lalu upload file Excel untuk input massal.</p>
+                <p class="text-secondary mb-3">Download template, isi data siswa secara manual, lalu upload file Excel untuk input massal.</p>
                 <form method="post" class="mb-3">
-                    <?= csrf_input() ?>
+                    <?= csrf_input('siswa') ?>
                     <input type="hidden" name="action" value="download_template_siswa">
                     <button type="submit" class="btn btn-outline-success w-100">
                         <i class="bi bi-download me-1"></i>Download Template Siswa
                     </button>
                 </form>
 
-                <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="import_excel_siswa">
-                    <div class="col-md-8">
-                        <label class="form-label">File Excel (.xlsx/.xls)</label>
-                        <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                <div class="card border-0 bg-light">
+                    <div class="card-body">
+                        <h6 class="mb-2">Upload File Template Siswa</h6>
+                        <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+                            <?= csrf_input('siswa') ?>
+                            <input type="hidden" name="action" value="import_excel_siswa">
+                            <div class="col-md-8">
+                                <label class="form-label">File Excel (.xlsx/.xls)</label>
+                                <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-upload me-1"></i>Import
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-upload me-1"></i>Import Siswa
-                        </button>
-                    </div>
-                </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <hr>
+<div class="modal fade" id="modalImportSiswaRdm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Siswa dari Ekspor RDM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary mb-3">Upload file ekspor data siswa dari Rapor Digital Madrasah (RDM) untuk di-preview terlebih dahulu sebelum disimpan ke database.</p>
 
-                <h6 class="mb-2">Import Data Siswa dari Ekspor RDM</h6>
-                <p class="text-secondary mb-3 small">Format didukung: <code>No. Absen</code>, <code>NIS</code>, <code>NISN</code>, <code>Nama</code>, <code>L/P</code>, <code>TTL</code>, <code>Kelas</code>. Baris dengan NISN yang sudah ada akan di-update otomatis.</p>
-                <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="preview_excel_siswa_rdm">
-                    <div class="col-md-8">
-                        <label class="form-label">File Excel Ekspor RDM (.xlsx/.xls)</label>
-                        <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <small class="text-secondary d-block mb-2">
+                            <strong>Format Kolom yang Didukung:</strong><br>
+                            NO ABSEN, NIS, NISN, NAMA, L/P, TTL, KELAS
+                        </small>
+                        <small class="text-secondary d-block">
+                            <strong>Catatan:</strong> NISN digunakan sebagai anchor untuk UPDATE otomatis jika siswa sudah ada di database. Baris dengan data wajib yang kosong akan diskip.
+                        </small>
                     </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="bi bi-search me-1"></i>Preview Siswa RDM
-                        </button>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <form method="post" class="d-inline">
+                            <?= csrf_input('siswa') ?>
+                            <input type="hidden" name="action" value="download_template_siswa_rdm">
+                            <button type="submit" class="btn btn-sm btn-outline-info w-100">
+                                <i class="bi bi-download me-1"></i>Unduh Template Format RDM (Referensi)
+                            </button>
+                        </form>
                     </div>
-                </form>
+                </div>
+
+                <div class="card border-0 bg-light">
+                    <div class="card-body">
+                        <h6 class="mb-2">Preview & Import File RDM</h6>
+                        <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+                            <?= csrf_input('siswa') ?>
+                            <input type="hidden" name="action" value="preview_excel_siswa_rdm">
+                            <div class="col-md-8">
+                                <label class="form-label">File Excel Ekspor RDM (.xlsx/.xls)<span class="text-danger">*</span></label>
+                                <input type="file" name="file_excel" class="form-control" accept=".xlsx,.xls" required>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="bi bi-search me-1"></i>Preview RDM
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
