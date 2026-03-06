@@ -152,14 +152,18 @@ if (!function_exists('detect_rdm_kelas')) {
                     continue;
                 }
 
-                if (preg_match('/^\s*KELAS\s*[:\-]\s*(.+)$/i', $raw, $m)) {
-                    return trim((string) $m[1]);
+                if (preg_match('/kelas\s*[:\-]\s*(.+)/i', $raw, $m)) {
+                    $kelasValue = trim((string) $m[1]);
+                    if ($kelasValue !== '') {
+                        return $kelasValue;
+                    }
                 }
 
-                if (normalize_header($raw) === 'KELAS') {
-                    for ($next = $c + 1; $next <= $c + 3; $next++) {
+                $rawUpper = strtoupper($raw);
+                if ($rawUpper === 'KELAS' || strpos($rawUpper, 'KELAS') === 0) {
+                    for ($next = $c + 1; $next <= min($c + 3, $colCount - 1); $next++) {
                         $candidate = trim((string) ($row[$next] ?? ''));
-                        if ($candidate !== '') {
+                        if ($candidate !== '' && !preg_match('/^(semester|tahun|madrasah)/i', $candidate)) {
                             return $candidate;
                         }
                     }
