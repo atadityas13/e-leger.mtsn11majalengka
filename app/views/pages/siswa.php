@@ -773,16 +773,16 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center">
-                                                    <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e(number_format($n['nilai_angka'], 2, '.', '')) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
+                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
                                                 </td>
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
-                                        <tr class="table-secondary fw-bold">
-                                            <td>Rata-Rata</td>
-                                            <td class="text-center"><?= e(number_format($rataRata, 2)) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
-                                        </tr>
+                                                        <tr class="table-secondary fw-bold">
+                                                            <td>Rata-Rata</td>
+                                                            <td class="text-center"><?= e((string)round($rataRata)) ?></td>
+                                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
+                                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -825,14 +825,14 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center">
-                                                    <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e(number_format($n['nilai_angka'], 2, '.', '')) ?>" id="nilai_uam_<?= e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="99">
+                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_uam_<?= e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="99">
                                                 </td>
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
-                                            <td class="text-center"><?= e(number_format($rataRataUam, 2)) ?></td>
+                                            <td class="text-center"><?= e((string)round($rataRataUam)) ?></td>
                                             <td class="text-center"><?= ucwords(terbilang_nilai($rataRataUam)) ?></td>
                                         </tr>
                                     </tbody>

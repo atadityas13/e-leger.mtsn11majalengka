@@ -302,8 +302,8 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <tr>
                                                 <td><?= e($ijazahRow['mapel']) ?></td>
                                                 <td class="text-center"><?= e(number_format($ijazahRow['rata_rapor'], 2)) ?></td>
-                                                <td class="text-center"><?= e(number_format($ijazahRow['nilai_uam'], 2)) ?></td>
-                                                <td class="text-center"><?= e(number_format($ijazahRow['nilai_ijazah'], 2)) ?></td>
+                                                <td class="text-center"><?= e((string)round($ijazahRow['nilai_uam'])) ?></td>
+                                                <td class="text-center"><?= e((string)round($ijazahRow['nilai_ijazah'])) ?></td>
                                                 <td class="text-center"><?= e(ucwords(terbilang_nilai($ijazahRow['nilai_ijazah']))) ?></td>
                                             </tr>
                                         <?php endforeach; ?>

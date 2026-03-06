@@ -79,9 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
                 $detail[] = [
                     'mapel_id' => (int)$m['id'],
                     'mapel' => $m['nama_mapel'],
-                    'rata_rapor' => $rata,
-                    'nilai_uam' => $uam,
-                    'nilai_ijazah' => $ijazah,
+                    'rata_rapor' => (int)round($rata),
+                    'nilai_uam' => (int)round($uam),
+                    'nilai_ijazah' => (int)round($ijazah),
                     'terbilang' => terbilang_nilai($ijazah),
                 ];
             }

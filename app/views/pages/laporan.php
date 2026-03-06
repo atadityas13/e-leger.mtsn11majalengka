@@ -75,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=ekspor-cetak');
         }
 
-        // Ambil daftar mapel kelompok A (semua mata pelajaran utama)
-        $stMapel = db()->query("SELECT id, nama_mapel FROM mapel WHERE kelompok='A' ORDER BY urutan");
+        // Ambil daftar mapel (semua mata pelajaran kelompok A dan B)
+        $stMapel = db()->query("SELECT id, nama_mapel FROM mapel ORDER BY urutan");
         $mapelList = $stMapel->fetchAll();
 
         // Buat spreadsheet dengan tab per semester 1 sampai target
@@ -87,24 +87,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetSem = $sheet->createSheet();
             $sheetSem->setTitle('Semester ' . $sem);
 
-            // Header kolom: No, NISN, NIS, Nama Lengkap, [Mapel-mapel], RATA-RATA
+            // Baris 1: Judul "NILAI RAPORT SEMESTER X" yang di-merge
+            $sheetSem->setCellValue('A1', 'No');
+            $sheetSem->setCellValue('B1', 'NISN');
+            $sheetSem->setCellValue('C1', 'NIS');
+            $sheetSem->setCellValue('D1', 'Nama Lengkap');
+            
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+            
+            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            $sheetSem->mergeCells('E1:' . $lastCol . '1');
+            $sheetSem->setCellValue('E1', 'NILAI RAPORT SEMESTER ' . $sem);
+            
+            // Styling untuk baris judul yang di-merge
+            $titleStyle = $sheetSem->getStyle('E1:' . $lastCol . '1');
+            $titleStyle->getFont()->setBold(true);
+            $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk kolom info (A1:D1)
+            $infoStyle = $sheetSem->getStyle('A1:D1');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Baris 2: Header kolom untuk mata pelajaran
             $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
             foreach ($mapelList as $m) {
                 $headerRow[] = $m['nama_mapel'];
             }
             $headerRow[] = 'RATA-RATA';
-            $sheetSem->fromArray($headerRow, null, 'A1');
+            $sheetSem->fromArray($headerRow, null, 'A2');
 
-            // Styling header (warna kuning background, bold text)
-            $lastCol = chr(65 + count($headerRow) - 1); // Convert 0-based to A,B,C...
-            $headerStyle = $sheetSem->getStyle('A1:' . $lastCol . '1');
+            // Styling header baris 2 (warna kuning background, bold text)
+            $headerStyle = $sheetSem->getStyle('A2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
             // Data siswa per semester
             $siswaNo = 1;
-            $dataRowStart = 2; // Row 2 is first data row
+            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
             foreach ($angkatanSiswa as $siswa) {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
@@ -123,14 +150,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $nilai = $nilaiData[$m['id']] ?? null;
                     if ($nilai !== null) {
                         $nilaiValues[] = (float) $nilai;
-                        $rowData[] = (float) $nilai;
+                        $rowData[] = (int)round((float) $nilai);
                     } else {
                         $rowData[] = '';
                     }
                 }
 
                 // Hitung rata-rata jika ada nilai
-                $rataRata = count($nilaiValues) > 0 ? round(array_sum($nilaiValues) / count($nilaiValues), 2) : '';
+                $rataRata = count($nilaiValues) > 0 ? round(array_sum($nilaiValues) / count($nilaiValues), 0) : '';
                 $rowData[] = $rataRata;
 
                 $sheetSem->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
@@ -147,23 +174,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetUam = $sheet->createSheet();
             $sheetUam->setTitle('UAM (Akhir)');
 
-            // Header kolom untuk UAM
+            // Baris 1: Judul "NILAI UAM (AKHIR)" yang di-merge
+            $sheetUam->setCellValue('A1', 'No');
+            $sheetUam->setCellValue('B1', 'NISN');
+            $sheetUam->setCellValue('C1', 'NIS');
+            $sheetUam->setCellValue('D1', 'Nama Lengkap');
+            
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 4 + $numMapel; // 4 info cols + mapel (UAM tidak ada rata-rata)
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+            
+            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            $sheetUam->mergeCells('E1:' . $lastCol . '1');
+            $sheetUam->setCellValue('E1', 'NILAI UAM (AKHIR)');
+            
+            // Styling untuk baris judul yang di-merge
+            $titleStyle = $sheetUam->getStyle('E1:' . $lastCol . '1');
+            $titleStyle->getFont()->setBold(true);
+            $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk kolom info (A1:D1)
+            $infoStyle = $sheetUam->getStyle('A1:D1');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Baris 2: Header kolom untuk mata pelajaran
             $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
             foreach ($mapelList as $m) {
                 $headerRow[] = $m['nama_mapel'];
             }
-            $sheetUam->fromArray($headerRow, null, 'A1');
+            $sheetUam->fromArray($headerRow, null, 'A2');
 
-            // Styling header (warna kuning background, bold text)
-            $lastCol = chr(65 + count($headerRow) - 1);
-            $headerStyle = $sheetUam->getStyle('A1:' . $lastCol . '1');
+            // Styling header baris 2 (warna kuning background, bold text)
+            $headerStyle = $sheetUam->getStyle('A2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
             // Data UAM untuk siswa angkatan
             $siswaNo = 1;
-            $dataRowStart = 2;
+            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
             foreach ($angkatanSiswa as $siswa) {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
@@ -175,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Isi nilai UAM per mapel
                 foreach ($mapelList as $m) {
                     $nilai = $nilaiUam[$m['id']] ?? '';
-                    $rowData[] = $nilai !== '' ? (float) $nilai : '';
+                    $rowData[] = $nilai !== '' ? (int)round((float) $nilai) : '';
                 }
 
                 $sheetUam->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
@@ -190,17 +244,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetIjazah = $sheet->createSheet();
             $sheetIjazah->setTitle('Nilai Ijazah');
 
-            // Header kolom untuk Nilai Ijazah
+            // Baris 1: Judul "NILAI IJAZAH" yang di-merge
+            $sheetIjazah->setCellValue('A1', 'No');
+            $sheetIjazah->setCellValue('B1', 'NISN');
+            $sheetIjazah->setCellValue('C1', 'NIS');
+            $sheetIjazah->setCellValue('D1', 'Nama Lengkap');
+            
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata ijazah
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+            
+            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            $sheetIjazah->mergeCells('E1:' . $lastCol . '1');
+            $sheetIjazah->setCellValue('E1', 'NILAI IJAZAH');
+            
+            // Styling untuk baris judul yang di-merge
+            $titleStyle = $sheetIjazah->getStyle('E1:' . $lastCol . '1');
+            $titleStyle->getFont()->setBold(true);
+            $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk kolom info (A1:D1)
+            $infoStyle = $sheetIjazah->getStyle('A1:D1');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Baris 2: Header kolom untuk mata pelajaran
             $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
             foreach ($mapelList as $m) {
                 $headerRow[] = $m['nama_mapel'];
             }
             $headerRow[] = 'RATA-RATA IJAZAH';
-            $sheetIjazah->fromArray($headerRow, null, 'A1');
+            $sheetIjazah->fromArray($headerRow, null, 'A2');
 
-            // Styling header (warna kuning background, bold text)
-            $lastCol = chr(65 + count($headerRow) - 1);
-            $headerStyle = $sheetIjazah->getStyle('A1:' . $lastCol . '1');
+            // Styling header baris 2 (warna kuning background, bold text)
+            $headerStyle = $sheetIjazah->getStyle('A2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
@@ -208,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Data Nilai Ijazah untuk siswa angkatan
             // Formula: (rata_rapor * 0.6) + (nilai_uam * 0.4)
             $siswaNo = 1;
-            $dataRowStart = 2;
+            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
             foreach ($angkatanSiswa as $siswa) {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
@@ -229,16 +310,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uam = $nilaiUam[$m['id']] ?? null;
 
                     if ($rapor5 !== null && $uam !== null) {
-                        $nilaiIjazah = round(((float) $rapor5 * 0.6) + ((float) $uam * 0.4), 2);
+                        $nilaiIjazah = round(((float) $rapor5 * 0.6) + ((float) $uam * 0.4), 0);
                         $nilaiIjazahValues[] = $nilaiIjazah;
-                        $rowData[] = $nilaiIjazah;
+                        $rowData[] = (int)$nilaiIjazah;
                     } else {
                         $rowData[] = '';
                     }
                 }
 
                 // Hitung rata-rata ijazah
-                $rataIjazah = count($nilaiIjazahValues) > 0 ? round(array_sum($nilaiIjazahValues) / count($nilaiIjazahValues), 2) : '';
+                $rataIjazah = count($nilaiIjazahValues) > 0 ? round(array_sum($nilaiIjazahValues) / count($nilaiIjazahValues), 0) : '';
                 $rowData[] = $rataIjazah;
 
                 $sheetIjazah->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
