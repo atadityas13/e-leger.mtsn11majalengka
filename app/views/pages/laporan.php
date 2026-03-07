@@ -586,6 +586,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $alumniList = db()->query('SELECT nisn, nama, angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC, nama')->fetchAll();
+$angkatanList = db()->query("SELECT DISTINCT angkatan_lulus FROM alumni WHERE angkatan_lulus IS NOT NULL AND angkatan_lulus <> '' ORDER BY angkatan_lulus DESC")->fetchAll();
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
@@ -632,7 +633,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <button class="nav-link active" id="tab-transkrip-individu" data-bs-toggle="tab" data-bs-target="#individu-tab" type="button">Cetak Individu</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-transkrip-bulk" data-bs-toggle="tab" data-bs-target="#bulk-tab" type="button">Cetak Bulk per Angkatan</button>
+                <button class="nav-link" id="tab-transkrip-bulk" data-bs-toggle="tab" data-bs-target="#bulk-tab" type="button">Cetak per Angkatan</button>
             </li>
         </ul>
 
@@ -674,6 +675,10 @@ require dirname(__DIR__) . '/partials/header.php';
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
                     </div>
+                <?php elseif (empty($angkatanList)): ?>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Data alumni sudah ada, tetapi belum ada <strong>angkatan lulus</strong> yang terisi. Lengkapi angkatan di menu <strong>Kelulusan</strong> agar fitur cetak per angkatan bisa digunakan.
+                    </div>
                 <?php else: ?>
                 <form method="post" id="formBulkTranskrip" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
@@ -686,12 +691,9 @@ require dirname(__DIR__) . '/partials/header.php';
                         <label class="form-label">Pilih Angkatan</label>
                         <select name="angkatan" class="form-select" required>
                             <option value="">-- pilih angkatan --</option>
-                            <?php
-                            $angkatanStmt = db()->query('SELECT DISTINCT angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC');
-                            while ($row = $angkatanStmt->fetch()) {
-                                echo '<option value="' . e((string) $row['angkatan_lulus']) . '">' . e((string) $row['angkatan_lulus']) . '</option>';
-                            }
-                            ?>
+                            <?php foreach ($angkatanList as $row): ?>
+                                <option value="<?= e((string) $row['angkatan_lulus']) ?>"><?= e((string) $row['angkatan_lulus']) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="col-md-4">
