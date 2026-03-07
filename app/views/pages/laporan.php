@@ -480,6 +480,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $verifyPath = $scriptDir . '/verify.php';
         $updateNomorSuratStmt = db()->prepare('UPDATE alumni SET nomor_surat = :nomor_surat WHERE nisn = :nisn');
+        db()->exec('CREATE TABLE IF NOT EXISTS alumni_verifikasi_meta (
+            verification_token VARCHAR(64) PRIMARY KEY,
+            nomor_surat VARCHAR(120) NULL,
+            titimangsa VARCHAR(100) NULL,
+            ttd_nama VARCHAR(150) NULL,
+            ttd_nip VARCHAR(60) NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )');
+        $upsertVerifikasiMetaStmt = db()->prepare('INSERT INTO alumni_verifikasi_meta (verification_token, nomor_surat, titimangsa, ttd_nama, ttd_nip)
+            VALUES (:verification_token, :nomor_surat, :titimangsa, :ttd_nama, :ttd_nip)
+            ON DUPLICATE KEY UPDATE
+                nomor_surat = VALUES(nomor_surat),
+                titimangsa = VALUES(titimangsa),
+                ttd_nama = VALUES(ttd_nama),
+                ttd_nip = VALUES(ttd_nip)');
 
         $normalizeMapel = static function (string $text): string {
             $text = strtolower($text);
@@ -571,14 +586,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'nomor_surat' => $nomorSuratLengkap,
                 'nisn' => $alumni['nisn'],
             ]);
+            $upsertVerifikasiMetaStmt->execute([
+                'verification_token' => $alumni['verification_token'],
+                'nomor_surat' => $nomorSuratLengkap,
+                'titimangsa' => (string) $titimangsa,
+                'ttd_nama' => (string) $namaKepsek,
+                'ttd_nip' => (string) $nipKepsek,
+            ]);
 
-            // Generate QR Code URL with print metadata
-            $verifyUrl = $baseUrl . $verifyPath
-                . '?token=' . urlencode($alumni['verification_token'])
-                . '&nomor_surat=' . urlencode($nomorSuratLengkap)
-                . '&ttd_nama=' . urlencode((string) $namaKepsek)
-                . '&ttd_nip=' . urlencode((string) $nipKepsek)
-                . '&titimangsa=' . urlencode((string) $titimangsa);
+            // Generate token-only verification URL (no mutable metadata in query string).
+            $verifyUrl = $baseUrl . $verifyPath . '?token=' . urlencode($alumni['verification_token']);
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
             $qrCodeSrc = $qrCodeUrl;
             $qrContext = stream_context_create([

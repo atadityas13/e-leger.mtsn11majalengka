@@ -7,12 +7,6 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $token = $_GET['token'] ?? '';
 
-// Metadata dari proses cetak (dibawa dalam URL QR)
-$metaNomorSurat = trim((string) ($_GET['nomor_surat'] ?? ''));
-$metaTtdNama = trim((string) ($_GET['ttd_nama'] ?? ''));
-$metaTtdNip = trim((string) ($_GET['ttd_nip'] ?? ''));
-$metaTitimangsa = trim((string) ($_GET['titimangsa'] ?? ''));
-
 if ($token === '') {
     http_response_code(400);
     die('Token verifikasi tidak valid.');
@@ -55,6 +49,26 @@ $tahunAjaran = '';
 if ($alumni['angkatan_lulus']) {
     $tahunLulus = (int)$alumni['angkatan_lulus'];
     $tahunAjaran = ($tahunLulus - 1) . '/' . $tahunLulus;
+}
+
+$metaNomorSurat = '';
+$metaTtdNama = '';
+$metaTtdNip = '';
+$metaTitimangsa = '';
+try {
+    $stmtMeta = db()->prepare('SELECT nomor_surat, titimangsa, ttd_nama, ttd_nip
+        FROM alumni_verifikasi_meta
+        WHERE verification_token = :token LIMIT 1');
+    $stmtMeta->execute(['token' => $token]);
+    $meta = $stmtMeta->fetch();
+    if (is_array($meta)) {
+        $metaNomorSurat = trim((string) ($meta['nomor_surat'] ?? ''));
+        $metaTitimangsa = trim((string) ($meta['titimangsa'] ?? ''));
+        $metaTtdNama = trim((string) ($meta['ttd_nama'] ?? ''));
+        $metaTtdNip = trim((string) ($meta['ttd_nip'] ?? ''));
+    }
+} catch (Throwable $e) {
+    // Metadata table may not exist yet; fallback to alumni fields.
 }
 
 $nomorTranskripTampil = $metaNomorSurat !== ''
@@ -186,6 +200,8 @@ $avgRapor = $countNilai > 0 ? $sumRapor / $countNilai : 0;
 $avgUam = $countNilai > 0 ? $sumUam / $countNilai : 0;
 $avgIjazah = $countNilai > 0 ? $sumIjazah / $countNilai : 0;
 $terbilangTotal = terbilang_nilai($avgIjazah);
+$logoWebPath = 'assets/logo-kemenag.png';
+$logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
 ?>
 <!doctype html>
 <html lang="id">
@@ -194,6 +210,7 @@ $terbilangTotal = terbilang_nilai($avgIjazah);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verifikasi Transkrip Ijazah - MTsN 11 Majalengka</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body { background: #f6f8fb; }
         .header-card {
@@ -201,28 +218,139 @@ $terbilangTotal = terbilang_nilai($avgIjazah);
             color: #fff;
             border-radius: 12px;
         }
+        .official-head {
+            display: grid;
+            grid-template-columns: 76px 1fr;
+            gap: 0.8rem;
+            align-items: center;
+        }
+        .official-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px;
+        }
+        .official-kemenag {
+            margin: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+        .official-school {
+            margin: 0.1rem 0;
+            font-size: 1.6rem;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .official-address {
+            margin: 0;
+            font-size: 0.78rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        .verified-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: #ffffff;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+            font-weight: 600;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .status-item {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 0.75rem;
+        }
+        .status-item .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+        .status-item .value { font-size: 0.9rem; font-weight: 600; color: #0f172a; }
         .table-sm td, .table-sm th { font-size: 0.88rem; }
         .identity td { padding: 0.3rem 0; }
         .group-row td { background: #f2f5f7; font-weight: 600; }
         .parent-row td { background: #fbfcfd; }
+        .meta-note {
+            border-left: 4px solid #22c55e;
+            background: #f0fdf4;
+            color: #14532d;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+        }
+        .table-responsive thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8fafc;
+        }
+        @media (max-width: 768px) {
+            .container.py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+            .header-card { padding: 1rem !important; }
+            .official-head { grid-template-columns: 54px 1fr; gap: 0.55rem; }
+            .official-logo { width: 52px; height: 52px; padding: 4px; }
+            .official-kemenag { font-size: 0.65rem; letter-spacing: 0.05em; }
+            .official-school { font-size: 1.05rem; letter-spacing: 0.02em; }
+            .official-address { font-size: 0.66rem; }
+            .status-grid { grid-template-columns: 1fr; }
+            .table-sm td, .table-sm th { font-size: 0.78rem; }
+            .identity td { font-size: 0.85rem; vertical-align: top; }
+            .identity td:first-child { width: 45% !important; }
+            .card-body { padding: 0.85rem; }
+            .verified-pill { width: 100%; justify-content: center; }
+        }
     </style>
 </head>
 <body class="bg-light">
     <div class="container py-4">
         <div class="header-card p-4 mb-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div>
-                    <h1 class="h4 mb-1">Verifikasi Transkrip Nilai</h1>
-                    <p class="mb-0 opacity-75">MTsN 11 Majalengka</p>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="official-head">
+                    <?php if ($logoExists): ?>
+                        <img src="<?= htmlspecialchars($logoWebPath) ?>" alt="Logo Kementerian Agama" class="official-logo">
+                    <?php else: ?>
+                        <div class="official-logo d-flex align-items-center justify-content-center small">LOGO</div>
+                    <?php endif; ?>
+                    <div>
+                        <p class="official-kemenag">Kementerian Agama Republik Indonesia</p>
+                        <h1 class="official-school">MTsN 11 MAJALENGKA</h1>
+                        <p class="official-address">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467</p>
+                    </div>
                 </div>
-                <span class="badge bg-light text-success border border-success-subtle fs-6">Dokumen Terverifikasi</span>
+                <span class="verified-pill"><i class="bi bi-patch-check-fill"></i> Dokumen Terverifikasi</span>
+            </div>
+        </div>
+
+        <div class="status-grid mb-3">
+            <div class="status-item">
+                <div class="label">Status Keaslian</div>
+                <div class="value text-success"><i class="bi bi-check-circle-fill"></i> Valid dan Asli</div>
+            </div>
+            <div class="status-item">
+                <div class="label">Nomor Verifikasi</div>
+                <div class="value"><?= htmlspecialchars(substr($token, 0, 16)) ?>...</div>
+            </div>
+            <div class="status-item">
+                <div class="label">Waktu Cek</div>
+                <div class="value"><?= date('d M Y H:i') ?> WIB</div>
             </div>
         </div>
 
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <div class="alert alert-success mb-4" role="alert">
-                    Dokumen ini <strong>ASLI</strong> dan terverifikasi di sistem e-Leger MTsN 11 Majalengka.
+                <div class="meta-note mb-4" role="alert">
+                    <strong><i class="bi bi-shield-check"></i> Validasi Sistem Berhasil</strong><br>
+                    Dokumen ini tercatat resmi pada sistem e-Leger MTsN 11 Majalengka dan cocok dengan token verifikasi QR.
                 </div>
 
                 <h5 class="mb-3">Data Siswa</h5>
