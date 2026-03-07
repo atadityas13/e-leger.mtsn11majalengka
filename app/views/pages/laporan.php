@@ -763,7 +763,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dompdf->render();
         
         if ($action === 'bulk_transkrip') {
-            $filename = 'transkrip_bulk_' . $angkatanFilter . '.pdf';
+            $filename = 'transkrip_angkatan_' . $angkatanFilter . '.pdf';
         } else {
             $safeName = trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $firstAlumniName), '_');
             if ($safeName === '') {
@@ -771,8 +771,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $filename = $safeName . '.pdf';
         }
-        // Open PDF in browser first so users can print/download from viewer controls.
-        $dompdf->stream($filename, ['Attachment' => false]);
+        // Open PDF inline with explicit filename so browser viewer does not fallback to "index.php".
+        $pdfBinary = $dompdf->output();
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+        header('Content-Length: ' . strlen($pdfBinary));
+        echo $pdfBinary;
         exit;
     }
 }
@@ -919,20 +923,24 @@ require dirname(__DIR__) . '/partials/header.php';
                 <div class="mb-3">
                     <label class="form-label">Nomor Urut Surat</label>
                     <input type="number" id="input_nomor_urut" class="form-control" placeholder="1" min="1" required>
-                    <small class="form-text text-muted">Nomor urut surat (contoh: 1, 25, 1001). Untuk cetak per angkatan, nomor ini akan auto-increment.</small>
+                    <div class="invalid-feedback">Nomor urut surat wajib diisi.</div>
+                    <small class="form-text text-muted">Untuk cetak per angkatan, nomor surat akan bertambah otomatis sesuai jumlah siswa.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Titimangsa (Tanggal)</label>
                     <input type="date" id="input_titimangsa" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    <small class="form-text text-muted">Contoh: 15 Juni 2024</small>
+                    <div class="invalid-feedback">Tanggal wajib diisi.</div>
+                    <small class="form-text text-muted">Contoh: 02/05/2026</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Nama Kepala Madrasah</label>
                     <input type="text" id="input_nama_kepsek" class="form-control" placeholder="Nama Lengkap" value="H. Jajang Gunawan, S.Ag., M.Pd.I." required>
+                    <div class="invalid-feedback">Nama Kepala Madrasah wajib diisi.</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">NIP Kepala Madrasah</label>
                     <input type="text" id="input_nip_kepsek" class="form-control" placeholder="NIP" value="196708251992031003" required>
+                    <div class="invalid-feedback">NIP Kepala Madrasah wajib diisi.</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -969,13 +977,41 @@ function showModalTTD(formId) {
 }
 
 function submitWithTTD() {
-    const nomorUrut = document.getElementById('input_nomor_urut').value;
-    const tgl = document.getElementById('input_titimangsa').value;
-    const nama = document.getElementById('input_nama_kepsek').value;
-    const nip = document.getElementById('input_nip_kepsek').value;
+    const nomorUrutEl = document.getElementById('input_nomor_urut');
+    const tglEl = document.getElementById('input_titimangsa');
+    const namaEl = document.getElementById('input_nama_kepsek');
+    const nipEl = document.getElementById('input_nip_kepsek');
+    
+    const nomorUrut = nomorUrutEl.value;
+    const tgl = tglEl.value;
+    const nama = namaEl.value;
+    const nip = nipEl.value;
 
-    if (!nomorUrut || !tgl || !nama || !nip) {
-        alert('Semua field wajib diisi!');
+    // Clear previous validation
+    [nomorUrutEl, tglEl, namaEl, nipEl].forEach(function(el) {
+        el.classList.remove('is-invalid');
+    });
+
+    // Validate each field
+    let hasError = false;
+    if (!nomorUrut) {
+        nomorUrutEl.classList.add('is-invalid');
+        hasError = true;
+    }
+    if (!tgl) {
+        tglEl.classList.add('is-invalid');
+        hasError = true;
+    }
+    if (!nama.trim()) {
+        namaEl.classList.add('is-invalid');
+        hasError = true;
+    }
+    if (!nip.trim()) {
+        nipEl.classList.add('is-invalid');
+        hasError = true;
+    }
+
+    if (hasError) {
         return;
     }
     
@@ -1016,6 +1052,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedNip) {
         document.getElementById('input_nip_kepsek').value = savedNip;
     }
+    
+    // Clear validation on input
+    const modalInputs = ['input_nomor_urut', 'input_titimangsa', 'input_nama_kepsek', 'input_nip_kepsek'];
+    modalInputs.forEach(function(inputId) {
+        const el = document.getElementById(inputId);
+        if (el) {
+            el.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+            el.addEventListener('change', function() {
+                this.classList.remove('is-invalid');
+            });
+        }
+    });
     
     const selectAlumni = document.getElementById('selectAlumni');
     const searchAlumni = document.getElementById('searchAlumni');
