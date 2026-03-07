@@ -668,6 +668,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     </div>
                 </form>
                 <?php endif; ?>
+            </div>
 
             <!-- Tab Bulk -->
             <div class="tab-pane fade" id="bulk-tab">
@@ -703,7 +704,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     </div>
                 </form>
                 <div class="alert alert-info mt-3 mb-0">
-                    <i class="bi bi-info-circle"></i> Cetak bulk akan menghasilkan satu file PDF berisi semua transkrip alumni pada angkatan yang dipilih.
+                    <i class="bi bi-info-circle"></i> Cetak per angkatan akan menghasilkan satu file PDF berisi semua transkrip alumni pada angkatan yang dipilih.
                 </div>
                 <?php endif; ?>
             </div>
