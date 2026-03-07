@@ -575,7 +575,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ['type' => 'item', 'no' => '8', 'prefix' => '', 'label' => 'Bahasa Inggris', 'keywords' => ['bahasainggris', 'inggris']],
                 ['type' => 'group', 'label' => 'Kelompok B'],
                 ['type' => 'item', 'no' => '1', 'prefix' => '', 'label' => 'Seni Budaya', 'keywords' => ['senibudaya']],
-                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmani', 'olahraga', 'kesehatan', 'penjaskes']],
+                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmaniolahragadankesehatan', 'pendidikanjasmani', 'pjok', 'penjaskes', 'penjasorkes', 'penjas', 'olahragadankesehatan', 'jasmaniolahraga']],
                 ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Prakarya dan/atau Informatika', 'keywords' => ['prakarya', 'informatika']],
                 ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
                 ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
@@ -716,7 +716,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 30px;">No</th>
                             <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center;">Mata Pelajaran</th>
                             <th colspan="3" style="padding: 4px; border: 1px solid #000; text-align: center;">Nilai</th>
-                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Terbilang</th>
+                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Nilai Ijazah Terbilang</th>
                         </tr>
                         <tr>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 72px;">Rata-rata Rapor</th>
@@ -847,6 +847,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     
                     <div class="col-md-8">
                         <label class="form-label">Pilih Alumni (Ketik Nama atau NISN)</label>
+                        <input type="text" id="searchAlumni" class="form-control mb-2" placeholder="Cari nama atau NISN...">
                         <select name="nisn" id="selectAlumni" class="form-select" required>
                             <option value="">-- ketik untuk mencari --</option>
                             <?php foreach ($alumniList as $a): ?>
@@ -1017,17 +1018,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     const selectAlumni = document.getElementById('selectAlumni');
-    if (selectAlumni) {
-        // Simple search filter
-        selectAlumni.addEventListener('focus', function() {
-            this.size = 10;
+    const searchAlumni = document.getElementById('searchAlumni');
+    if (selectAlumni && searchAlumni) {
+        const defaultOptionText = '-- ketik untuk mencari --';
+        const allOptions = Array.from(selectAlumni.options)
+            .filter(function(opt) { return opt.value !== ''; })
+            .map(function(opt) {
+                return { value: opt.value, text: opt.text };
+            });
+
+        const renderOptions = function(keyword) {
+            const selectedValue = selectAlumni.value;
+            const q = keyword.trim().toLowerCase();
+
+            selectAlumni.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = defaultOptionText;
+            selectAlumni.appendChild(defaultOption);
+
+            const filtered = allOptions.filter(function(item) {
+                return q === '' || item.text.toLowerCase().indexOf(q) !== -1 || item.value.toLowerCase().indexOf(q) !== -1;
+            });
+
+            filtered.forEach(function(item) {
+                const option = document.createElement('option');
+                option.value = item.value;
+                option.textContent = item.text;
+                if (item.value === selectedValue) {
+                    option.selected = true;
+                }
+                selectAlumni.appendChild(option);
+            });
+
+            if (filtered.length === 0) {
+                defaultOption.textContent = '-- tidak ada hasil --';
+            }
+        };
+
+        searchAlumni.addEventListener('input', function() {
+            renderOptions(this.value);
         });
-        selectAlumni.addEventListener('blur', function() {
-            this.size = 1;
+
+        searchAlumni.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
         });
-        selectAlumni.addEventListener('change', function() {
-            this.size = 1;
-        });
+
+        renderOptions('');
     }
 });
 </script>

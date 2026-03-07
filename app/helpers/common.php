@@ -217,7 +217,28 @@ if (!function_exists('terbilang_nilai')) {
         $formatted = number_format($angka, 2, ',', '');
         [$int, $dec] = explode(',', $formatted);
 
-        return trim(terbilang_bulat((int) $int)) . ' koma ' . trim(terbilang_bulat((int) $dec));
+        // Bagian bulat
+        $terbilangBulat = trim(terbilang_bulat((int) $int));
+        
+        // Jika desimal adalah 00, return hanya bagian bulat tanpa koma
+        if ($dec === '00') {
+            return $terbilangBulat;
+        }
+        
+        // Bagian desimal: setiap digit disebut satu per satu
+        // Contoh: 85,50 → "delapan puluh lima koma lima nol"
+        // Bukan: "delapan puluh lima koma lima puluh"
+        $digitAngka = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
+        $terbilangDesimal = '';
+        for ($i = 0; $i < strlen($dec); $i++) {
+            $digit = (int) $dec[$i];
+            $terbilangDesimal .= $digitAngka[$digit];
+            if ($i < strlen($dec) - 1) {
+                $terbilangDesimal .= ' ';
+            }
+        }
+
+        return $terbilangBulat . ' koma ' . $terbilangDesimal;
     }
 }
 
