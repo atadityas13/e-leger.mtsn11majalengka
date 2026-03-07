@@ -17,6 +17,8 @@ $token = $_GET['token'] ?? '';
 
 if ($token === '') {
     http_response_code(400);
+    $logoWebPath = 'assets/logo-kemenag.png';
+    $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
     ?>
 <!doctype html>
 <html lang="id">
@@ -26,16 +28,117 @@ if ($token === '') {
     <title>Token Tidak Valid - MTsN 11 Majalengka</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f6f8fb; }
+        .header-card {
+            background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+            color: #fff;
+            border-radius: 12px;
+        }
+        .official-head {
+            display: grid;
+            grid-template-columns: 76px 1fr;
+            gap: 0.8rem;
+            align-items: center;
+        }
+        .official-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px;
+        }
+        .official-kemenag {
+            margin: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+        .official-school {
+            margin: 0.1rem 0;
+            font-size: 1.6rem;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .official-address {
+            margin: 0;
+            font-size: 0.78rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        .verified-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: #ffffff;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+            font-weight: 600;
+        }
+        .meta-note {
+            border-left: 4px solid #dc2626;
+            background: #fef2f2;
+            color: #7f1d1d;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+        }
+        @media (max-width: 768px) {
+            .container.py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+            .header-card { padding: 1rem !important; }
+            .official-head { grid-template-columns: 54px 1fr; gap: 0.55rem; }
+            .official-logo { width: 52px; height: 52px; padding: 4px; }
+            .official-kemenag { font-size: 0.65rem; letter-spacing: 0.05em; }
+            .official-school { font-size: 1.05rem; letter-spacing: 0.02em; }
+            .official-address { font-size: 0.66rem; }
+            .verified-pill { width: 100%; justify-content: center; }
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="alert alert-warning text-center p-4" role="alert">
-                    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Token Tidak Valid</h4>
-                    <p class="mb-0">Token verifikasi tidak ditemukan. Silakan scan ulang QR Code pada dokumen transkrip.</p>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="header-card p-4 mb-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="official-head">
+                    <?php if ($logoExists): ?>
+                        <img src="<?= htmlspecialchars($logoWebPath) ?>" alt="Logo Kementerian Agama" class="official-logo">
+                    <?php else: ?>
+                        <div class="official-logo d-flex align-items-center justify-content-center small">LOGO</div>
+                    <?php endif; ?>
+                    <div>
+                        <p class="official-kemenag">Kementerian Agama Republik Indonesia</p>
+                        <h1 class="official-school">MTsN 11 MAJALENGKA</h1>
+                        <p class="official-address">Kp. Sindanghurip Desa Maniis Kec. Cingambul<br>Kab. Majalengka, 45467</p>
+                    </div>
+                </div>
+                <span class="verified-pill"><i class="bi bi-exclamation-triangle-fill"></i> Dokumen Tidak Terverifikasi</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-x-circle" style="font-size: 3rem; color: #dc2626;"></i>
+                        <h4 class="mt-3 mb-2">Token Verifikasi Tidak Valid</h4>
+                        <p class="text-muted mb-3">Token tidak ditemukan atau sudah kadaluarsa.</p>
+                        <div class="meta-note">
+                            <strong><i class="bi bi-info-circle"></i> Instruksi:</strong><br>
+                            Silakan scan ulang QR Code yang terdapat pada dokumen transkrip asli.
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="text-center mt-4 text-muted">
+            <small><b>Sistem Verifikasi E-Leger MTsN 11 Majalengka</b><br>
+            Hubungi: (0233) 3600020 | mtsn11majalengka@gmail.com</small>
         </div>
     </div>
 </body>
@@ -54,6 +157,8 @@ $alumni = $stmt->fetch();
 
 if (!$alumni) {
     http_response_code(404);
+    $logoWebPath = 'assets/logo-kemenag.png';
+    $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
     ?>
 <!doctype html>
 <html lang="id">
@@ -63,18 +168,120 @@ if (!$alumni) {
     <title>Dokumen Tidak Ditemukan - MTsN 11 Majalengka</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f6f8fb; }
+        .header-card {
+            background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+            color: #fff;
+            border-radius: 12px;
+        }
+        .official-head {
+            display: grid;
+            grid-template-columns: 76px 1fr;
+            gap: 0.8rem;
+            align-items: center;
+        }
+        .official-logo {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px;
+        }
+        .official-kemenag {
+            margin: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+        .official-school {
+            margin: 0.1rem 0;
+            font-size: 1.6rem;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .official-address {
+            margin: 0;
+            font-size: 0.78rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        .verified-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: #ffffff;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+            font-weight: 600;
+        }
+        .meta-note {
+            border-left: 4px solid #dc2626;
+            background: #fef2f2;
+            color: #7f1d1d;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            text-align: left;
+        }
+        @media (max-width: 768px) {
+            .container.py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+            .header-card { padding: 1rem !important; }
+            .official-head { grid-template-columns: 54px 1fr; gap: 0.55rem; }
+            .official-logo { width: 52px; height: 52px; padding: 4px; }
+            .official-kemenag { font-size: 0.65rem; letter-spacing: 0.05em; }
+            .official-school { font-size: 1.05rem; letter-spacing: 0.02em; }
+            .official-address { font-size: 0.66rem; }
+            .verified-pill { width: 100%; justify-content: center; }
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="alert alert-danger text-center p-4" role="alert">
-                    <h4 class="alert-heading"><i class="bi bi-search"></i> Dokumen Tidak Ditemukan</h4>
-                    <p class="mb-0">Token verifikasi tidak valid atau dokumen dibatalkan. Hubungi pihak Madrasah jika ada pertanyaan.</p>
-                    <hr>
-                    <p class="mb-0"><small>Hubungi: (0233) 3600020 | mtsn11majalengka@gmail.com</small></p>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="header-card p-4 mb-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="official-head">
+                    <?php if ($logoExists): ?>
+                        <img src="<?= htmlspecialchars($logoWebPath) ?>" alt="Logo Kementerian Agama" class="official-logo">
+                    <?php else: ?>
+                        <div class="official-logo d-flex align-items-center justify-content-center small">LOGO</div>
+                    <?php endif; ?>
+                    <div>
+                        <p class="official-kemenag">Kementerian Agama Republik Indonesia</p>
+                        <h1 class="official-school">MTsN 11 MAJALENGKA</h1>
+                        <p class="official-address">Kp. Sindanghurip Desa Maniis Kec. Cingambul<br>Kab. Majalengka, 45467</p>
+                    </div>
+                </div>
+                <span class="verified-pill"><i class="bi bi-exclamation-triangle-fill"></i> Dokumen Tidak Terverifikasi</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-search" style="font-size: 3rem; color: #dc2626;"></i>
+                        <h4 class="mt-3 mb-2">Dokumen Tidak Ditemukan</h4>
+                        <p class="text-muted mb-3">Data dokumen yang diminta tidak tersedia dalam sistem.</p>
+                        <div class="meta-note">
+                            <strong><i class="bi bi-info-circle"></i> Kemungkinan Penyebab:</strong><br>
+                            • Token sudah kadaluarsa atau dihapus<br>
+                            • Dokumen belum tersebar secara resmi<br>
+                            • Terjadi kesalahan teknis pada sistem<br><br>
+                            <strong>Hubungi Madrasah:</strong> (0233) 3600020 | mtsn11majalengka@gmail.com
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="text-center mt-4 text-muted">
+            <small><b>Sistem Verifikasi E-Leger MTsN 11 Majalengka</b></small>
         </div>
     </div>
 </body>
