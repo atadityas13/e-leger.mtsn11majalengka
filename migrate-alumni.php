@@ -79,8 +79,8 @@ try {
     }
     echo "  ✓ Created " . $uamCount . " UAM values\n";
     
-    // 5. Insert Alumni
-    echo "[5/5] Creating alumni record...\n";
+    // 5. Insert Alumni (temp with empty ijazah data)
+    echo "[5/6] Creating alumni record...\n";
     db()->prepare("
         INSERT INTO alumni (
             nisn, nama, angkatan_lulus, tanggal_kelulusan, 
@@ -96,6 +96,55 @@ try {
         '[]'
     ]);
     echo "  ✓ Alumni record created\n";
+    
+    // 6. Generate data_ijazah_json with rata-rata, nilai_uam, nilai_ijazah, terbilang
+    echo "[6/6] Generating ijazah data...\n";
+    
+    $stmtAllMapel = db()->prepare("SELECT id, nama_mapel FROM mapel ORDER BY id");
+    $stmtAllMapel->execute();
+    $allMapel = $stmtAllMapel->fetchAll();
+    
+    $ijazahDetail = [];
+    foreach ($allMapel as $m) {
+        // Hitung rata-rata nilai rapor semester 1-5
+        $stR = db()->prepare("
+            SELECT AVG(nilai_angka) as rata_rapor 
+            FROM nilai_rapor 
+            WHERE nisn = ? AND mapel_id = ? AND semester BETWEEN 1 AND 5
+        ");
+        $stR->execute([$nisn, $m['id']]);
+        $rataRapor = (float) ($stR->fetch()['rata_rapor'] ?? 0);
+        
+        // Ambil nilai UAM
+        $stU = db()->prepare("
+            SELECT nilai_angka 
+            FROM nilai_uam 
+            WHERE nisn = ? AND mapel_id = ? 
+            LIMIT 1
+        ");
+        $stU->execute([$nisn, $m['id']]);
+        $nilaiUam = (float) ($stU->fetch()['nilai_angka'] ?? 0);
+        
+        // Hitung nilai ijazah: 60% rapor + 40% UAM
+        $nilaiIjazah = hitung_nilai_ijazah($rataRapor, $nilaiUam);
+        
+        // Convert to terbilang (Indonesian text representation)
+        $terbilangText = terbilang_nilai($nilaiIjazah);
+        
+        $ijazahDetail[] = [
+            'mapel_id' => (int)$m['id'],
+            'mapel' => $m['nama_mapel'],
+            'rata_rapor' => (int)round($rataRapor),
+            'nilai_uam' => (int)round($nilaiUam),
+            'nilai_ijazah' => (int)round($nilaiIjazah),
+            'terbilang' => $terbilangText
+        ];
+    }
+    
+    // Update alumni dengan data ijazah JSON
+    $stmtUpdate = db()->prepare("UPDATE alumni SET data_ijazah_json = ? WHERE nisn = ?");
+    $stmtUpdate->execute([json_encode($ijazahDetail), $nisn]);
+    echo "  ✓ Generated " . count($ijazahDetail) . " ijazah items\n";
     
     // Verify
     echo "\n=================================================\n";
