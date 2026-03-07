@@ -605,9 +605,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </td>
                         <td style="text-align: center; vertical-align: middle;">
                             <h2 style="margin: 0; font-size: 12px; font-weight: bold; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h1 style="margin: 2px 0; font-size: 18px; font-weight: bold; font-family: 'Times New Roman', serif;">MTsN 11 MAJALENGKA</h1>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: 'Times New Roman', serif;">Kampung Sindanghurip Rt. 05 Rw. 04 No. 21</p>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: 'Times New Roman', serif;">Kecamatan Cingambul, Kabupaten Majalengka - Jawa Barat</p>
+                            <h1 style="margin: 2px 0; font-size: 18px; font-weight: bold; font-family: Times New Roman, serif;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kampung Sindanghurip Rt. 05 Rw. 04 No. 21</p>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kecamatan Cingambul, Kabupaten Majalengka - Jawa Barat</p>
                         </td>
                         <td style="width: 70px;"></td>
                     </tr>
