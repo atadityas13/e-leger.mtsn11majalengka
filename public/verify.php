@@ -350,22 +350,22 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
             <div class="card-body">
                 <div class="meta-note mb-4" role="alert">
                     <strong><i class="bi bi-shield-check"></i> Validasi Sistem Berhasil</strong><br>
-                    Dokumen ini tercatat resmi pada sistem e-Leger MTsN 11 Majalengka dan cocok dengan token verifikasi QR.
+                    Dokumen dianggap asli selama Data pada Dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.
                 </div>
 
                 <h5 class="mb-3">Data Siswa</h5>
                 <table class="table table-borderless identity mb-0">
                     <tr><td style="width: 320px;">Satuan Pendidikan</td><td style="width: 20px;">:</td><td>MTsN 11 MAJALENGKA</td></tr>
-                    <tr><td>Nomor Pokok Sekolah Nasional</td><td>:</td><td>20278893</td></tr>
+                    <tr><td>NPSN</td><td>:</td><td>20278893</td></tr>
                     <tr><td>Nama Lengkap</td><td>:</td><td><strong><?= htmlspecialchars(strtoupper($alumni['nama'])) ?></strong></td></tr>
-                    <tr><td>Tempat dan Tanggal Lahir</td><td>:</td><td><?= htmlspecialchars($tempatTglLahir) ?></td></tr>
+                    <tr><td>Tempat, Tanggal Lahir</td><td>:</td><td><?= htmlspecialchars($tempatTglLahir) ?></td></tr>
                     <tr><td>Nomor Induk Siswa Nasional</td><td>:</td><td><?= htmlspecialchars($alumni['nisn']) ?></td></tr>
                     <tr><td>Nomor Induk Siswa Madrasah</td><td>:</td><td><?= htmlspecialchars($nism) ?></td></tr>
                     <tr><td>Nomor Transkrip Nilai</td><td>:</td><td><?= htmlspecialchars($nomorTranskripTampil) ?></td></tr>
                     <tr><td>Tanggal Kelulusan</td><td>:</td><td><?= htmlspecialchars($tglKelulusanFormat) ?></td></tr>
                     <tr><td>Tahun Ajaran</td><td>:</td><td><?= htmlspecialchars($tahunAjaran) ?></td></tr>
                     <?php if ($metaTitimangsa !== ''): ?>
-                        <tr><td>Titimangsa Penandatanganan</td><td>:</td><td><?= htmlspecialchars($metaTitimangsa) ?></td></tr>
+                        <tr><td>Titimangsa</td><td>:</td><td>Majalengka, <?= htmlspecialchars($metaTitimangsa) ?></td></tr>
                     <?php endif; ?>
                     <?php if ($metaTtdNama !== ''): ?>
                         <tr><td>Nama Penandatangan</td><td>:</td><td><?= htmlspecialchars($metaTtdNama) ?></td></tr>
@@ -379,7 +379,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
 
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
-                <h5 class="mb-0">Rincian Nilai Ijazah</h5>
+                <h5 class="mb-0">Transkrip Nilai</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -392,7 +392,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
                                 <th rowspan="2" style="width: 230px;">Nilai Ijazah Terbilang</th>
                             </tr>
                             <tr>
-                                <th style="width: 120px;">Rata-rata Rapor</th>
+                                <th style="width: 120px;">Rapor</th>
                                 <th style="width: 90px;">UAM</th>
                                 <th style="width: 90px;">Ijazah</th>
                             </tr>
@@ -432,7 +432,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
         </div>
 
         <div class="text-center mt-4 text-muted">
-            <small>Dokumen ini diverifikasi otomatis oleh sistem e-Leger MTsN 11 Majalengka.</small><br>
+            <small><b>Diverifikasi otomatis oleh Sistem.</b><br>Dokumen dianggap asli selama Data pada Dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.</small><br>
             <small>Untuk informasi lanjut: (0233) 3600020 | mtsn11majalengka@gmail.com</small>
         </div>
     </div>
