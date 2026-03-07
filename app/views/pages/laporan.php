@@ -484,14 +484,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $rataRapor = (float) ($d['rata_rapor'] ?? 0);
                 $nilaiUam = (float) ($d['nilai_uam'] ?? 0);
-                $nilaiIjazah = (float) hitung_nilai_ijazah($rataRapor, $nilaiUam);
+                $nilaiIjazahRaw = (float) hitung_nilai_ijazah($rataRapor, $nilaiUam);
+                $nilaiIjazah = (int) round($nilaiIjazahRaw);
 
                 $nilaiByMapel[] = [
                     'norm' => $normalizeMapel($mapelNama),
                     'mapel' => $mapelNama,
                     'rata_rapor' => (int) round($rataRapor),
                     'nilai_uam' => (int) round($nilaiUam),
-                    'nilai_ijazah' => (int) round($nilaiIjazah),
+                    'nilai_ijazah' => $nilaiIjazah,
                     'terbilang' => terbilang_nilai($nilaiIjazah),
                 ];
             }
@@ -604,10 +605,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 : '<div style="width: 58px; height: 58px; border: 1px solid #000; margin: 0 auto; font-size: 9px; line-height: 58px; text-align: center;">LOGO</div>') . '
                         </td>
                         <td style="text-align: center; vertical-align: middle;">
-                            <h2 style="margin: 0; font-size: 12px; font-weight: bold; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h1 style="margin: 2px 0; font-size: 18px; font-weight: bold; font-family: Times New Roman, serif;">MTsN 11 MAJALENGKA</h1>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kampung Sindanghurip Rt. 05 Rw. 04 No. 21</p>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kecamatan Cingambul, Kabupaten Majalengka - Jawa Barat</p>
+                            <h2 style="margin: 0; font-size: 15px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+                            <h1 style="margin: 2px 0; font-size: 20px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.3px;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
                         </td>
                         <td style="width: 70px;"></td>
                     </tr>
@@ -617,10 +618,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <!-- Title -->
                 <h2 style="text-align: center; margin: 2px 0 0 0; font-size: 16px; font-weight: bold; letter-spacing: 0.3px;">TRANSKRIP NILAI</h2>
-                <p style="text-align: center; margin: 1px 0 12px 0; font-size: 11px; font-weight: bold;">TAHUN AJARAN ' . htmlspecialchars($tahunAjaran) . '</p>
+                <p style="text-align: center; margin: 1px 0 12px 0; font-size: 14px; ">TAHUN AJARAN ' . htmlspecialchars($tahunAjaran) . '</p>
                 
                 <!-- Info Box (No Borders) -->
-                <table style="width: 100%; margin-bottom: 10px; font-size: 11px;">
+                <table style="width: 100%; margin-bottom: 10px; font-size: 12px;">
                     <tr>
                         <td style="width: 35%; padding: 2px 0;">Satuan Pendidikan</td>
                         <td style="width: 2%; padding: 2px 0;">:</td>
@@ -667,9 +668,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Huruf</th>
                         </tr>
                         <tr>
-                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">Rapor</th>
+                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 72px;">Rata-rata Rapor</th>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">UAM</th>
-                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">Ijazah</th>
+                            <th style="padding: 3px 2px; border: 1px solid #000; text-align: center; width: 90px;">
+                                Ijazah<br>
+                                <span style="font-size: 8px; font-weight: normal;">(60% Rapor+40% UAM)</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
