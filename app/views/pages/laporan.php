@@ -437,6 +437,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $verifyUrl = $baseUrl . '/verify.php?token=' . urlencode($alumni['verification_token']);
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
 
+            // Load official logo image as data URI for reliable Dompdf rendering
+            $logoDataUri = '';
+            $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag.png';
+            if (is_file($logoPath)) {
+                $logoBinary = file_get_contents($logoPath);
+                if ($logoBinary !== false) {
+                    $logoDataUri = 'data:image/png;base64,' . base64_encode($logoBinary);
+                }
+            }
+
             // Format tanggal kelulusan Indonesia
             $bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
             $tglKelulusanFormat = '';
@@ -461,113 +471,232 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tahunAjaran = ($tahunLulus - 1) . '/' . $tahunLulus;
             }
 
+            $normalizeMapel = static function (string $text): string {
+                $text = strtolower($text);
+                return preg_replace('/[^a-z0-9]+/', '', $text) ?? '';
+            };
+
+            $nilaiByMapel = [];
+            foreach ($detail as $d) {
+                $mapelNama = trim((string) ($d['mapel'] ?? ''));
+                if ($mapelNama === '') {
+                    continue;
+                }
+                $rataRapor = (float) ($d['rata_rapor'] ?? 0);
+                $nilaiUam = (float) ($d['nilai_uam'] ?? 0);
+                $nilaiIjazah = (float) hitung_nilai_ijazah($rataRapor, $nilaiUam);
+
+                $nilaiByMapel[] = [
+                    'norm' => $normalizeMapel($mapelNama),
+                    'mapel' => $mapelNama,
+                    'rata_rapor' => (int) round($rataRapor),
+                    'nilai_uam' => (int) round($nilaiUam),
+                    'nilai_ijazah' => (int) round($nilaiIjazah),
+                    'terbilang' => terbilang_nilai($nilaiIjazah),
+                ];
+            }
+
+            $findMapel = static function (array $rowsMapel, array $keywords) use ($normalizeMapel): ?array {
+                $normKeywords = [];
+                foreach ($keywords as $kw) {
+                    $normKeywords[] = $normalizeMapel($kw);
+                }
+                foreach ($rowsMapel as $rowMapel) {
+                    foreach ($normKeywords as $nkw) {
+                        if ($nkw !== '' && str_contains($rowMapel['norm'], $nkw)) {
+                            return $rowMapel;
+                        }
+                    }
+                }
+                return null;
+            };
+
+            $layoutRows = [
+                ['type' => 'group', 'label' => 'Kelompok A'],
+                ['type' => 'parent', 'no' => '1', 'label' => 'Pendidikan Agama Islam'],
+                ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Al Qur\'an Hadis', 'keywords' => ['alquranhadis', 'alquranhadis', 'quranhadis']],
+                ['type' => 'item', 'no' => '', 'prefix' => 'B.', 'label' => 'Akidah Akhlak', 'keywords' => ['akidahakhlak']],
+                ['type' => 'item', 'no' => '', 'prefix' => 'C.', 'label' => 'Fikih', 'keywords' => ['fikih', 'fiqih']],
+                ['type' => 'item', 'no' => '', 'prefix' => 'D.', 'label' => 'Sejarah Kebudayaan Islam', 'keywords' => ['sejarahkebudayaanislam', 'ski']],
+                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Pancasila dan Kewarganegaraan', 'keywords' => ['pancasila', 'kewarganegaraan', 'ppkn']],
+                ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Bahasa Indonesia', 'keywords' => ['bahasaindonesia']],
+                ['type' => 'item', 'no' => '4', 'prefix' => '', 'label' => 'Bahasa Arab', 'keywords' => ['bahasaarab']],
+                ['type' => 'item', 'no' => '5', 'prefix' => '', 'label' => 'Matematika', 'keywords' => ['matematika', 'mtk']],
+                ['type' => 'item', 'no' => '6', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Alam', 'keywords' => ['ilmupengetahuanalam', 'ipa']],
+                ['type' => 'item', 'no' => '7', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Sosial', 'keywords' => ['ilmupengetahuansosial', 'ips']],
+                ['type' => 'item', 'no' => '8', 'prefix' => '', 'label' => 'Bahasa Inggris', 'keywords' => ['bahasainggris', 'inggris']],
+                ['type' => 'group', 'label' => 'Kelompok B'],
+                ['type' => 'item', 'no' => '1', 'prefix' => '', 'label' => 'Seni Budaya', 'keywords' => ['senibudaya']],
+                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmani', 'olahraga', 'kesehatan', 'penjaskes']],
+                ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Prakarya dan/atau Informatika', 'keywords' => ['prakarya', 'informatika']],
+                ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
+                ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
+            ];
+
             $rows = '';
-            $rataTotal = 0;
-            $terbilangTotal = '';
-            foreach ($detail as $idx => $d) {
-                $rataTotal += $d['nilai_ijazah'];
+            $sumRapor = 0.0;
+            $sumUam = 0.0;
+            $sumIjazah = 0.0;
+            $countNilai = 0;
+
+            foreach ($layoutRows as $layoutRow) {
+                if ($layoutRow['type'] === 'group') {
+                    $rows .= '<tr><td colspan="6" style="padding: 4px 6px; border: 1px solid #000;">' . htmlspecialchars($layoutRow['label']) . '</td></tr>';
+                    continue;
+                }
+
+                if ($layoutRow['type'] === 'parent') {
+                    $rows .= '<tr>
+                        <td style="padding: 4px 6px; border: 1px solid #000; text-align: center; width: 30px;">' . htmlspecialchars($layoutRow['no']) . '</td>
+                        <td style="padding: 4px 6px; border: 1px solid #000;">' . htmlspecialchars($layoutRow['label']) . '</td>
+                        <td style="padding: 4px 6px; border: 1px solid #000;"></td>
+                        <td style="padding: 4px 6px; border: 1px solid #000;"></td>
+                        <td style="padding: 4px 6px; border: 1px solid #000;"></td>
+                        <td style="padding: 4px 6px; border: 1px solid #000;"></td>
+                    </tr>';
+                    continue;
+                }
+
+                $nilaiMapel = $findMapel($nilaiByMapel, $layoutRow['keywords']);
+                $mapelLabel = trim(($layoutRow['prefix'] !== '' ? $layoutRow['prefix'] . ' ' : '') . $layoutRow['label']);
+                $noCell = $layoutRow['no'] === '' ? '&nbsp;' : htmlspecialchars($layoutRow['no']);
+                $raporCell = '';
+                $uamCell = '';
+                $ijazahCell = '';
+                $terbilangCell = '';
+
+                if (is_array($nilaiMapel)) {
+                    $raporCell = (string) $nilaiMapel['rata_rapor'];
+                    $uamCell = (string) $nilaiMapel['nilai_uam'];
+                    $ijazahCell = (string) $nilaiMapel['nilai_ijazah'];
+                    $terbilangCell = (string) $nilaiMapel['terbilang'];
+                    $sumRapor += (float) $nilaiMapel['rata_rapor'];
+                    $sumUam += (float) $nilaiMapel['nilai_uam'];
+                    $sumIjazah += (float) $nilaiMapel['nilai_ijazah'];
+                    $countNilai++;
+                }
+
                 $rows .= '<tr>
-                    <td style="padding: 8px; border: 1px solid #000;">' . ($idx + 1) . '. ' . htmlspecialchars($d['mapel']) . '</td>
-                    <td style="padding: 8px; border: 1px solid #000; text-align: center;">' . htmlspecialchars((string) $d['nilai_ijazah']) . '</td>
-                    <td style="padding: 8px; border: 1px solid #000;">' . htmlspecialchars($d['terbilang']) . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000; text-align: center; width: 30px;">' . $noCell . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000;">' . htmlspecialchars($mapelLabel) . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000; text-align: center; width: 60px;">' . htmlspecialchars($raporCell) . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000; text-align: center; width: 60px;">' . htmlspecialchars($uamCell) . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000; text-align: center; width: 60px; font-weight: bold;">' . htmlspecialchars($ijazahCell) . '</td>
+                    <td style="padding: 4px 6px; border: 1px solid #000; font-style: italic;">' . htmlspecialchars($terbilangCell) . '</td>
                 </tr>';
             }
-            // Calculate average
-            $rataIjazah = !empty($detail) ? $rataTotal / count($detail) : 0;
-            $terbilangTotal = terbilang_nilai($rataIjazah);
+
+            $avgRapor = $countNilai > 0 ? $sumRapor / $countNilai : 0;
+            $avgUam = $countNilai > 0 ? $sumUam / $countNilai : 0;
+            $avgIjazah = $countNilai > 0 ? $sumIjazah / $countNilai : 0;
+            $terbilangTotal = terbilang_nilai($avgIjazah);
 
             $pageBreak = ($idx < count($nisnList) - 1) ? '<div style="page-break-after: always;"></div>' : '';
 
             $allHtml .= '
-            <div style="font-family: Arial, sans-serif; font-size: 12px; padding: 20px;">
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <div style="font-family: Arial, sans-serif; font-size: 11px; padding: 10px 12px; color: #000;">
+                <!-- Header -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
                     <tr>
-                        <td style="width: 80px; text-align: center; vertical-align: top;">
-                            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" style="width: 70px; height: 70px;">
+                        <td style="width: 70px; text-align: center; vertical-align: middle;">
+                            ' . ($logoDataUri !== ''
+                                ? '<img src="' . $logoDataUri . '" style="width: 58px; height: 58px; object-fit: contain;">'
+                                : '<div style="width: 58px; height: 58px; border: 1px solid #000; margin: 0 auto; font-size: 9px; line-height: 58px; text-align: center;">LOGO</div>') . '
                         </td>
-                        <td style="text-align: center; vertical-align: top;">
-                            <h2 style="margin: 0; font-size: 16px; font-weight: bold;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h3 style="margin: 5px 0; font-size: 14px; font-weight: bold;">MADRASAH TSANAWIYAH NEGERI 11 MAJALENGKA</h3>
-                            <p style="margin: 5px 0; font-size: 11px;">Jl. Raya Majalengka, Kabupaten Majalengka, Jawa Barat 45418</p>
-                            <p style="margin: 5px 0; font-size: 11px;">Telp: (0233) 8319182 | Email: mtsn11majalengka@gmail.com</p>
+                        <td style="text-align: center; vertical-align: middle;">
+                            <h2 style="margin: 0; font-size: 12px; font-weight: bold; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+                            <h1 style="margin: 2px 0; font-size: 18px; font-weight: bold; font-family: 'Times New Roman', serif;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: 'Times New Roman', serif;">Kampung Sindanghurip Rt. 05 Rw. 04 No. 21</p>
+                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: 'Times New Roman', serif;">Kecamatan Cingambul, Kabupaten Majalengka - Jawa Barat</p>
                         </td>
-                        <td style="width: 80px;"></td>
+                        <td style="width: 70px;"></td>
                     </tr>
                 </table>
                 
-                <hr style="border: 2px solid #000; margin: 10px 0;">
+                <div style="height: 3px; border-top: 2px solid #000; border-bottom: 1px solid #000; margin: 6px 0 10px 0;"></div>
                 
-                <h3 style="text-align: center; margin: 20px 0; font-size: 14px; font-weight: bold; text-decoration: underline;">TRANSKRIP NILAI</h3>
+                <!-- Title -->
+                <h2 style="text-align: center; margin: 2px 0 0 0; font-size: 16px; font-weight: bold; letter-spacing: 0.3px;">TRANSKRIP NILAI</h2>
+                <p style="text-align: center; margin: 1px 0 12px 0; font-size: 11px; font-weight: bold;">TAHUN AJARAN ' . htmlspecialchars($tahunAjaran) . '</p>
                 
-                <table style="width: 100%; margin-bottom: 20px; font-size: 11px;">
-                    <tr style="border: 1px solid #000;">
-                        <td style="width: 35%; padding: 5px; border: 1px solid #000;">Satuan Pendidikan</td>
-                        <td style="width: 2%; padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">MTsN 11 MAJALENGKA</td>
+                <!-- Info Box (No Borders) -->
+                <table style="width: 100%; margin-bottom: 10px; font-size: 11px;">
+                    <tr>
+                        <td style="width: 35%; padding: 2px 0;">Satuan Pendidikan</td>
+                        <td style="width: 2%; padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">MTsN 11 MAJALENGKA</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Nomor Pokok Sekolah Nasional</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">20278893</td>
+                        <td style="padding: 2px 0;">Nomor Pokok Sekolah Nasional</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">20278893</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Nama Lengkap</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars(strtoupper($alumni['nama'])) . '</td>
+                        <td style="padding: 2px 0;">Nama Lengkap</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars(strtoupper($alumni['nama'])) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Tempat dan Tanggal Lahir</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($tempatTglLahir) . '</td>
+                        <td style="padding: 2px 0;">Tempat dan Tanggal Lahir</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($tempatTglLahir) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Nomor Induk Siswa Nasional</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($alumni['nisn']) . '</td>
+                        <td style="padding: 2px 0;">Nomor Induk Siswa Nasional</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($alumni['nisn']) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Nomor Izazah</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
+                        <td style="padding: 2px 0;">Nomor Transkrip Nilai</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #000;">Tanggal Kelulusan</td>
-                        <td style="padding: 5px; border: 1px solid #000;">:</td>
-                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($tglKelulusanFormat) . '</td>
+                        <td style="padding: 2px 0;">Tanggal Kelulusan</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($tglKelulusanFormat) . '</td>
                     </tr>
                 </table>
                 
-                <p style="font-weight: bold; margin: 15px 0 5px 0; font-size: 11px;">Mata Pelajaran</p>
-                
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #000; font-size: 11px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #000; font-size: 10.5px;">
                     <thead>
-                        <tr style="background-color: #fff;">
-                            <th style="padding: 8px; border: 1px solid #000; text-align: left; font-weight: bold;">Mata Pelajaran</th>
-                            <th style="padding: 8px; border: 1px solid #000; text-align: center; font-weight: bold; width: 15%;">Nilai</th>
-                            <th style="padding: 8px; border: 1px solid #000; text-align: left; font-weight: bold;">Huruf</th>
+                        <tr>
+                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 30px;">No</th>
+                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center;">Mata Pelajaran</th>
+                            <th colspan="3" style="padding: 4px; border: 1px solid #000; text-align: center;">Nilai</th>
+                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Huruf</th>
+                        </tr>
+                        <tr>
+                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">Rapor</th>
+                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">UAM</th>
+                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">Ijazah</th>
                         </tr>
                     </thead>
                     <tbody>
                         ' . $rows . '
-                        <tr style="background-color: #f5f5f5;">
-                            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Rata-Rata</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: center; font-weight: bold;">' . number_format($rataIjazah, 2, ',', '.') . '</td>
-                            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">' . htmlspecialchars($terbilangTotal) . '</td>
+                        <tr>
+                            <td colspan="2" style="padding: 5px; border: 1px solid #000; text-align: center; font-weight: bold;">Rata-Rata</td>
+                            <td style="padding: 5px; border: 1px solid #000; text-align: center; font-weight: bold;">' . number_format($avgRapor, 2, ',', '.') . '</td>
+                            <td style="padding: 5px; border: 1px solid #000; text-align: center; font-weight: bold;">' . number_format($avgUam, 2, ',', '.') . '</td>
+                            <td style="padding: 5px; border: 1px solid #000; text-align: center; font-weight: bold;">' . number_format($avgIjazah, 2, ',', '.') . '</td>
+                            <td style="padding: 5px; border: 1px solid #000; font-style: italic; font-weight: bold;">' . htmlspecialchars($terbilangTotal) . '</td>
                         </tr>
                     </tbody>
                 </table>
 
-                <table style="width: 100%; margin-top: 30px;">
+                <table style="width: 100%; margin-top: 8px;">
                     <tr>
-                        <td style="width: 35%; vertical-align: top; text-align: center;">
-                            <img src="' . $qrCodeUrl . '" style="width: 80px; height: 80px;"><br>
-                            <small style="font-size: 9px;">QR Code Verifikasi</small>
+                        <td style="width: 32%; vertical-align: top; text-align: left; padding-left: 8px;">
+                            <img src="' . $qrCodeUrl . '" style="width: 90px; height: 90px;"><br>
+                            <small style="font-size: 8px;">Scan untuk verifikasi</small>
                         </td>
-                        <td style="width: 65%; text-align: center; vertical-align: bottom; padding-top: 20px;">
-                            <p style="margin: 0; font-size: 11px;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
-                            <p style="margin: 5px 0 30px 0; font-size: 11px;">Kepala Madrasah</p>
-                            <p style="margin: 0; font-weight: bold; text-decoration: underline; font-size: 11px;">' . htmlspecialchars($namaKepsek) . '</p>
-                            <p style="margin: 0; font-size: 9px;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
+                        <td style="width: 68%; text-align: left; vertical-align: top; padding-top: 2px;">
+                            <div style="width: 230px; margin-left: auto; margin-right: 20px;">
+                                <p style="margin: 0; font-size: 11px;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
+                                <p style="margin: 2px 0 48px 0; font-size: 11px;">Kepala Madrasah</p>
+                                <p style="margin: 0; font-weight: bold; font-size: 11px;">' . htmlspecialchars($namaKepsek) . '</p>
+                                <p style="margin: 1px 0 0 0; font-size: 10px;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
+                            </div>
                         </td>
                     </tr>
                 </table>
