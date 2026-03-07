@@ -423,16 +423,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Tentukan NISN yang akan dicetak
         $nisnList = [];
+        $alumniRows = [];
         if ($action === 'bulk_transkrip') {
             $angkatanFilter = (int) ($_POST['angkatan'] ?? 0);
-            $stmtBulk = db()->prepare('SELECT nisn FROM alumni WHERE angkatan_lulus = :angkatan ORDER BY nama');
+            $stmtBulk = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
+                s.tempat_lahir, s.tgl_lahir, s.nis
+                FROM alumni a
+                LEFT JOIN siswa s ON s.nisn = a.nisn
+                WHERE a.angkatan_lulus = :angkatan
+                ORDER BY a.nama');
             $stmtBulk->execute(['angkatan' => $angkatanFilter]);
-            $nisnList = array_column($stmtBulk->fetchAll(), 'nisn');
+            $alumniRows = $stmtBulk->fetchAll();
+            $nisnList = array_column($alumniRows, 'nisn');
         } else {
-            $nisnList = [trim($_POST['nisn'] ?? '')];
+            $nisn = trim((string) ($_POST['nisn'] ?? ''));
+            if ($nisn !== '') {
+                $stmtOne = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
+                    s.tempat_lahir, s.tgl_lahir, s.nis
+                    FROM alumni a
+                    LEFT JOIN siswa s ON s.nisn = a.nisn
+                    WHERE a.nisn = :nisn LIMIT 1');
+                $stmtOne->execute(['nisn' => $nisn]);
+                $one = $stmtOne->fetch();
+                if ($one) {
+                    $alumniRows = [$one];
+                    $nisnList = [$nisn];
+                }
+            }
         }
 
-        if (empty($nisnList)) {
+        if (empty($alumniRows)) {
             set_flash('error', 'Tidak ada data alumni untuk dicetak.');
             redirect('index.php?page=ekspor-cetak');
         }
@@ -440,21 +460,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dompdf = new Dompdf();
         $dompdf->set_option('isHtml5ParserEnabled', true);
         $dompdf->set_option('isRemoteEnabled', true);
+
+        // Load logo once instead of per-student to reduce IO overhead.
+        $logoDataUri = '';
+        $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag.png';
+        if (is_file($logoPath)) {
+            $logoBinary = file_get_contents($logoPath);
+            if ($logoBinary !== false) {
+                $logoDataUri = 'data:image/png;base64,' . base64_encode($logoBinary);
+            }
+        }
         
         $allHtml = '';
         $firstAlumniName = '';
-        foreach ($nisnList as $idx => $nisn) {
-            $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
-                s.tempat_lahir, s.tgl_lahir, s.nis
-                FROM alumni a 
-                LEFT JOIN siswa s ON s.nisn = a.nisn
-                WHERE a.nisn=:nisn LIMIT 1');
-            $stmt->execute(['nisn' => $nisn]);
-            $alumni = $stmt->fetch();
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . "://$_SERVER[HTTP_HOST]";
 
-            if (!$alumni) {
-                continue;
+        $normalizeMapel = static function (string $text): string {
+            $text = strtolower($text);
+            return preg_replace('/[^a-z0-9]+/', '', $text) ?? '';
+        };
+        $normalizeTerbilang = static function (string $text): string {
+            $text = trim((string) preg_replace('/\s+/', ' ', $text));
+            $text = (string) preg_replace('/\s+koma\s*$/i', '', $text);
+            return trim($text);
+        };
+        $findMapel = static function (array $rowsMapel, array $keywords) use ($normalizeMapel): ?array {
+            $normKeywords = [];
+            foreach ($keywords as $kw) {
+                $normKeywords[] = $normalizeMapel($kw);
             }
+            foreach ($rowsMapel as $rowMapel) {
+                foreach ($normKeywords as $nkw) {
+                    if ($nkw !== '' && strpos($rowMapel['norm'], $nkw) !== false) {
+                        return $rowMapel;
+                    }
+                }
+            }
+            return null;
+        };
+        $layoutRows = [
+            ['type' => 'group', 'label' => 'Kelompok A'],
+            ['type' => 'parent', 'no' => '1', 'label' => 'Pendidikan Agama Islam'],
+            ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Al Qur\'an Hadis', 'keywords' => ['alquranhadis', 'alquranhadis', 'quranhadis']],
+            ['type' => 'item', 'no' => '', 'prefix' => 'B.', 'label' => 'Akidah Akhlak', 'keywords' => ['akidahakhlak']],
+            ['type' => 'item', 'no' => '', 'prefix' => 'C.', 'label' => 'Fikih', 'keywords' => ['fikih', 'fiqih']],
+            ['type' => 'item', 'no' => '', 'prefix' => 'D.', 'label' => 'Sejarah Kebudayaan Islam', 'keywords' => ['sejarahkebudayaanislam', 'ski']],
+            ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Pancasila dan Kewarganegaraan', 'keywords' => ['pancasila', 'kewarganegaraan', 'ppkn']],
+            ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Bahasa Indonesia', 'keywords' => ['bahasaindonesia']],
+            ['type' => 'item', 'no' => '4', 'prefix' => '', 'label' => 'Bahasa Arab', 'keywords' => ['bahasaarab']],
+            ['type' => 'item', 'no' => '5', 'prefix' => '', 'label' => 'Matematika', 'keywords' => ['matematika', 'mtk']],
+            ['type' => 'item', 'no' => '6', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Alam', 'keywords' => ['ilmupengetahuanalam', 'ipa']],
+            ['type' => 'item', 'no' => '7', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Sosial', 'keywords' => ['ilmupengetahuansosial', 'ips']],
+            ['type' => 'item', 'no' => '8', 'prefix' => '', 'label' => 'Bahasa Inggris', 'keywords' => ['bahasainggris', 'inggris']],
+            ['type' => 'group', 'label' => 'Kelompok B'],
+            ['type' => 'item', 'no' => '1', 'prefix' => '', 'label' => 'Seni Budaya', 'keywords' => ['senibudaya']],
+            ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmaniolahragadankesehatan', 'pendidikanjasmani', 'pjok', 'penjaskes', 'penjasorkes', 'penjas', 'olahragadankesehatan', 'jasmaniolahraga']],
+            ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Prakarya dan/atau Informatika', 'keywords' => ['prakarya', 'informatika']],
+            ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
+            ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
+        ];
+        foreach ($alumniRows as $idx => $alumni) {
             if ($firstAlumniName === '') {
                 $firstAlumniName = (string) ($alumni['nama'] ?? '');
             }
@@ -462,18 +527,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
             
             // Generate QR Code URL
-            $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
             $verifyUrl = $baseUrl . '/verify.php?token=' . urlencode($alumni['verification_token']);
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
-
-            // Load official logo image as data URI for reliable Dompdf rendering
-            $logoDataUri = '';
-            $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag.png';
-            if (is_file($logoPath)) {
-                $logoBinary = file_get_contents($logoPath);
-                if ($logoBinary !== false) {
-                    $logoDataUri = 'data:image/png;base64,' . base64_encode($logoBinary);
-                }
+            $qrCodeSrc = $qrCodeUrl;
+            $qrContext = stream_context_create([
+                'http' => ['timeout' => 3],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
+            if ($qrBinary !== false) {
+                $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
             }
 
             // Format tanggal kelulusan Indonesia
@@ -512,17 +575,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nomorUrutSekarang = $nomorUrutAwal + $idx;
             $nomorSuratLengkap = $nomorUrutSekarang . '/Mts.10.89/PP.00.5/' . $bulanSurat . '/' . $tahunSurat;
 
-            $normalizeMapel = static function (string $text): string {
-                $text = strtolower($text);
-                return preg_replace('/[^a-z0-9]+/', '', $text) ?? '';
-            };
-            $normalizeTerbilang = static function (string $text): string {
-                $text = trim((string) preg_replace('/\s+/', ' ', $text));
-                // Some helper outputs may end with a dangling "koma" for integer values.
-                $text = (string) preg_replace('/\s+koma\s*$/i', '', $text);
-                return trim($text);
-            };
-
             $nilaiByMapel = [];
             foreach ($detail as $d) {
                 $mapelNama = trim((string) ($d['mapel'] ?? ''));
@@ -543,43 +595,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'terbilang' => $normalizeTerbilang(terbilang_nilai($nilaiIjazah)),
                 ];
             }
-
-            $findMapel = static function (array $rowsMapel, array $keywords) use ($normalizeMapel): ?array {
-                $normKeywords = [];
-                foreach ($keywords as $kw) {
-                    $normKeywords[] = $normalizeMapel($kw);
-                }
-                foreach ($rowsMapel as $rowMapel) {
-                    foreach ($normKeywords as $nkw) {
-                        if ($nkw !== '' && strpos($rowMapel['norm'], $nkw) !== false) {
-                            return $rowMapel;
-                        }
-                    }
-                }
-                return null;
-            };
-
-            $layoutRows = [
-                ['type' => 'group', 'label' => 'Kelompok A'],
-                ['type' => 'parent', 'no' => '1', 'label' => 'Pendidikan Agama Islam'],
-                ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Al Qur\'an Hadis', 'keywords' => ['alquranhadis', 'alquranhadis', 'quranhadis']],
-                ['type' => 'item', 'no' => '', 'prefix' => 'B.', 'label' => 'Akidah Akhlak', 'keywords' => ['akidahakhlak']],
-                ['type' => 'item', 'no' => '', 'prefix' => 'C.', 'label' => 'Fikih', 'keywords' => ['fikih', 'fiqih']],
-                ['type' => 'item', 'no' => '', 'prefix' => 'D.', 'label' => 'Sejarah Kebudayaan Islam', 'keywords' => ['sejarahkebudayaanislam', 'ski']],
-                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Pancasila dan Kewarganegaraan', 'keywords' => ['pancasila', 'kewarganegaraan', 'ppkn']],
-                ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Bahasa Indonesia', 'keywords' => ['bahasaindonesia']],
-                ['type' => 'item', 'no' => '4', 'prefix' => '', 'label' => 'Bahasa Arab', 'keywords' => ['bahasaarab']],
-                ['type' => 'item', 'no' => '5', 'prefix' => '', 'label' => 'Matematika', 'keywords' => ['matematika', 'mtk']],
-                ['type' => 'item', 'no' => '6', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Alam', 'keywords' => ['ilmupengetahuanalam', 'ipa']],
-                ['type' => 'item', 'no' => '7', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Sosial', 'keywords' => ['ilmupengetahuansosial', 'ips']],
-                ['type' => 'item', 'no' => '8', 'prefix' => '', 'label' => 'Bahasa Inggris', 'keywords' => ['bahasainggris', 'inggris']],
-                ['type' => 'group', 'label' => 'Kelompok B'],
-                ['type' => 'item', 'no' => '1', 'prefix' => '', 'label' => 'Seni Budaya', 'keywords' => ['senibudaya']],
-                ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmaniolahragadankesehatan', 'pendidikanjasmani', 'pjok', 'penjaskes', 'penjasorkes', 'penjas', 'olahragadankesehatan', 'jasmaniolahraga']],
-                ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Prakarya dan/atau Informatika', 'keywords' => ['prakarya', 'informatika']],
-                ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
-                ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
-            ];
 
             $rows = '';
             $sumRapor = 0.0;
@@ -742,7 +757,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <table style="width: 100%; margin-top: 8px;">
                     <tr>
                         <td style="width: 32%; vertical-align: top; text-align: left; padding-left: 8px;">
-                            <img src="' . $qrCodeUrl . '" style="width: 90px; height: 90px;">
+                            <img src="' . $qrCodeSrc . '" style="width: 90px; height: 90px;">
                         </td>
                         <td style="width: 68%; text-align: left; vertical-align: top; padding-top: 2px;">
                             <div style="width: 230px; margin-left: auto; margin-right: 20px;">
