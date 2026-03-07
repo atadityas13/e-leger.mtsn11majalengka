@@ -7,6 +7,12 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $token = $_GET['token'] ?? '';
 
+// Metadata dari proses cetak (dibawa dalam URL QR)
+$metaNomorSurat = trim((string) ($_GET['nomor_surat'] ?? ''));
+$metaTtdNama = trim((string) ($_GET['ttd_nama'] ?? ''));
+$metaTtdNip = trim((string) ($_GET['ttd_nip'] ?? ''));
+$metaTitimangsa = trim((string) ($_GET['titimangsa'] ?? ''));
+
 if ($token === '') {
     http_response_code(400);
     die('Token verifikasi tidak valid.');
@@ -50,6 +56,10 @@ if ($alumni['angkatan_lulus']) {
     $tahunLulus = (int)$alumni['angkatan_lulus'];
     $tahunAjaran = ($tahunLulus - 1) . '/' . $tahunLulus;
 }
+
+$nomorTranskripTampil = $metaNomorSurat !== ''
+    ? $metaNomorSurat
+    : (string) (($alumni['nomor_surat'] ?? '') !== '' ? $alumni['nomor_surat'] : '-');
 
 $nism = '-';
 $nisSiswa = trim((string) ($alumni['nis'] ?? ''));
@@ -223,9 +233,18 @@ $terbilangTotal = terbilang_nilai($avgIjazah);
                     <tr><td>Tempat dan Tanggal Lahir</td><td>:</td><td><?= htmlspecialchars($tempatTglLahir) ?></td></tr>
                     <tr><td>Nomor Induk Siswa Nasional</td><td>:</td><td><?= htmlspecialchars($alumni['nisn']) ?></td></tr>
                     <tr><td>Nomor Induk Siswa Madrasah</td><td>:</td><td><?= htmlspecialchars($nism) ?></td></tr>
-                    <tr><td>Nomor Transkrip Nilai</td><td>:</td><td><?= htmlspecialchars((string) ($alumni['nomor_surat'] ?: '-')) ?></td></tr>
+                    <tr><td>Nomor Transkrip Nilai</td><td>:</td><td><?= htmlspecialchars($nomorTranskripTampil) ?></td></tr>
                     <tr><td>Tanggal Kelulusan</td><td>:</td><td><?= htmlspecialchars($tglKelulusanFormat) ?></td></tr>
                     <tr><td>Tahun Ajaran</td><td>:</td><td><?= htmlspecialchars($tahunAjaran) ?></td></tr>
+                    <?php if ($metaTitimangsa !== ''): ?>
+                        <tr><td>Titimangsa Penandatanganan</td><td>:</td><td><?= htmlspecialchars($metaTitimangsa) ?></td></tr>
+                    <?php endif; ?>
+                    <?php if ($metaTtdNama !== ''): ?>
+                        <tr><td>Nama Penandatangan</td><td>:</td><td><?= htmlspecialchars($metaTtdNama) ?></td></tr>
+                    <?php endif; ?>
+                    <?php if ($metaTtdNip !== ''): ?>
+                        <tr><td>NIP Penandatangan</td><td>:</td><td><?= htmlspecialchars($metaTtdNip) ?></td></tr>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>

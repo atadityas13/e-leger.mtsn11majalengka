@@ -479,6 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $scriptDir = '';
         }
         $verifyPath = $scriptDir . '/verify.php';
+        $updateNomorSuratStmt = db()->prepare('UPDATE alumni SET nomor_surat = :nomor_surat WHERE nisn = :nisn');
 
         $normalizeMapel = static function (string $text): string {
             $text = strtolower($text);
@@ -531,19 +532,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
             
-            // Generate QR Code URL
-            $verifyUrl = $baseUrl . $verifyPath . '?token=' . urlencode($alumni['verification_token']);
-            $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
-            $qrCodeSrc = $qrCodeUrl;
-            $qrContext = stream_context_create([
-                'http' => ['timeout' => 3],
-                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
-            ]);
-            $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
-            if ($qrBinary !== false) {
-                $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
-            }
-
             // Format tanggal kelulusan Indonesia
             $bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
             $tglKelulusanFormat = '';
@@ -579,6 +567,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Bulan dan tahun diambil dari titimangsa, bukan dari tanggal kelulusan
             $nomorUrutSekarang = $nomorUrutAwal + $idx;
             $nomorSuratLengkap = $nomorUrutSekarang . '/Mts.10.89/PP.00.5/' . $bulanSurat . '/' . $tahunSurat;
+            $updateNomorSuratStmt->execute([
+                'nomor_surat' => $nomorSuratLengkap,
+                'nisn' => $alumni['nisn'],
+            ]);
+
+            // Generate QR Code URL with print metadata
+            $verifyUrl = $baseUrl . $verifyPath
+                . '?token=' . urlencode($alumni['verification_token'])
+                . '&nomor_surat=' . urlencode($nomorSuratLengkap)
+                . '&ttd_nama=' . urlencode((string) $namaKepsek)
+                . '&ttd_nip=' . urlencode((string) $nipKepsek)
+                . '&titimangsa=' . urlencode((string) $titimangsa);
+            $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
+            $qrCodeSrc = $qrCodeUrl;
+            $qrContext = stream_context_create([
+                'http' => ['timeout' => 3],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
+            if ($qrBinary !== false) {
+                $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
+            }
 
             $nilaiByMapel = [];
             foreach ($detail as $d) {
