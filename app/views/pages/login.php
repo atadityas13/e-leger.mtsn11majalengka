@@ -56,6 +56,7 @@ $flash = get_flash();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="icon" href="assets/logo-tracer-mtsn11majalengka.png" type="image/png">
     <style>
         .login-brand {
             background: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
@@ -97,7 +98,7 @@ $flash = get_flash();
         <div class="card border-0 shadow-lg">
             <div class="login-brand">
                 <div class="d-flex align-items-center gap-2 mb-1">
-                    <i class="bi bi-mortarboard-fill fs-4"></i>
+                    <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 45px; object-fit: contain;">
                     <h1 class="h4 mb-0">TRACER MTsN 11 Majalengka</h1>
                 </div>
                 <div class="subtitle">Transkrip & Academic Ledger<br><small class="text-muted" style="font-size: 0.85rem;">Tracing Progress, Graduating Success.</small></div>
