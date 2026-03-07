@@ -3,13 +3,7 @@
  * ========================================================
  * E-Leger Alumni Test Data Migration Runner
  * ========================================================
- * 
- * Script ini menjalankan migrasi untuk membuat data alumni test
- * untuk keperluan testing fitur cetak leger
- * 
- * Gunakan:
- * - Browser: http://localhost/e-leger.../migrate-alumni.php
- * - Terminal: php migrate-alumni.php
+ * Direct PHP approach - manual data insertion
  */
 
 require_once __DIR__ . '/app/bootstrap.php';
@@ -20,106 +14,124 @@ echo "E-LEGER ALUMNI TEST DATA MIGRATION\n";
 echo "=================================================\n\n";
 
 try {
-    // Read SQL migration file
-    $migrationFile = __DIR__ . '/database/migrations/001_create_alumni_test_data.sql';
+    $nisn = '1234567890123';
     
-    if (!file_exists($migrationFile)) {
-        throw new Exception("Migration file tidak ditemukan: " . $migrationFile);
+    // 1. Delete existing data
+    echo "[1/5] Cleaning up old data...\n";
+    db()->prepare("DELETE FROM alumni WHERE nisn = ?")->execute([$nisn]);
+    db()->prepare("DELETE FROM nilai_uam WHERE nisn = ?")->execute([$nisn]);
+    db()->prepare("DELETE FROM nilai_rapor WHERE nisn = ?")->execute([$nisn]);
+    db()->prepare("DELETE FROM siswa WHERE nisn = ?")->execute([$nisn]);
+    echo "  ✓ Cleanup ok\n";
+    
+    // 2. Insert Siswa
+    echo "[2/5] Creating student data...\n";
+    db()->prepare("
+        INSERT INTO siswa (
+            nisn, nis, nama, tempat_lahir, tgl_lahir, 
+            kelas, nomor_absen, current_semester, tahun_masuk, 
+            status_siswa, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ")->execute([
+        $nisn, '2000123', 'Muhammad Rizki Al-Azhari', 'Majalengka',
+        '2009-06-15', 'IX', 1, 6, '2022/2023', 'Lulus'
+    ]);
+    echo "  ✓ Student created\n";
+    
+    // 3. Get mapel list
+    $mapelStmt = db()->query("SELECT id FROM mapel ORDER BY id");
+    $mapelIds = $mapelStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+    
+    if (empty($mapelIds)) {
+        throw new Exception("Tidak ada mata pelajaran di database!");
     }
     
-    echo "[1/3] Reading migration file...\n";
-    $sqlContent = file_get_contents($migrationFile);
+    echo "[3/5] Creating rapor values (" . count($mapelIds) . " subjects × 5 semesters)...\n";
     
-    // Split ke individual statements
-    $statements = array_filter(
-        array_map('trim', explode(';', $sqlContent)),
-        function($stmt) {
-            return !empty($stmt) && strpos(trim($stmt), '--') !== 0;
+    // 3. Insert Nilai Rapor
+    $stmtRapor = db()->prepare("
+        INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized)
+        VALUES (?, ?, ?, '2025/2026', ?, 1)
+    ");
+    
+    $rapidCount = 0;
+    for ($sem = 1; $sem <= 5; $sem++) {
+        foreach ($mapelIds as $mapelId) {
+            $nilai = round(75 + (rand() % 20), 2);
+            $stmtRapor->execute([$nisn, $mapelId, $sem, $nilai]);
+            $rapidCount++;
         }
-    );
+    }
+    echo "  ✓ Created " . $rapidCount . " rapor values\n";
     
-    echo "[2/3] Executing SQL statements...\n";
-    $executedCount = 0;
-    $results = [];
+    // 4. Insert Nilai UAM
+    echo "[4/5] Creating UAM values...\n";
+    $stmtUam = db()->prepare("
+        INSERT INTO nilai_uam (nisn, mapel_id, nilai_angka)
+        VALUES (?, ?, ?)
+    ");
     
-    foreach ($statements as $statement) {
-        $trimmed = trim($statement);
-        if (empty($trimmed)) continue;
-        
-        try {
-            $result = db()->query($trimmed);
-            
-            // If it's a SELECT, fetch the results
-            if (stripos($trimmed, 'SELECT') === 0) {
-                $results = array_merge($results, $result->fetchAll());
-            }
-            
-            $executedCount++;
-            echo "  ✓ Statement " . $executedCount . " executed\n";
-            
-        } catch (Exception $e) {
-            echo "  ✗ Error: " . $e->getMessage() . "\n";
-        }
+    $uamCount = 0;
+    foreach ($mapelIds as $mapelId) {
+        $nilai = round(76 + (rand() % 18), 2);
+        $stmtUam->execute([$nisn, $mapelId, $nilai]);
+        $uamCount++;
+    }
+    echo "  ✓ Created " . $uamCount . " UAM values\n";
+    
+    // 5. Insert Alumni
+    echo "[5/5] Creating alumni record...\n";
+    db()->prepare("
+        INSERT INTO alumni (
+            nisn, nama, angkatan_lulus, tanggal_kelulusan, 
+            nomor_surat, verification_token, data_ijazah_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+    ")->execute([
+        $nisn,
+        'Muhammad Rizki Al-Azhari',
+        2026,
+        date('Y-m-d'),
+        '       /Mts.10.89/PP.00.5/' . date('m/Y'),
+        substr(hash('sha256', $nisn . time()), 0, 32),
+        '[]'
+    ]);
+    echo "  ✓ Alumni record created\n";
+    
+    // Verify
+    echo "\n=================================================\n";
+    echo "✓ SUCCESS!\n";
+    echo "=================================================\n\n";
+    
+    $checks = [
+        ['Siswa', "SELECT COUNT(*) FROM siswa WHERE nisn = ?"],
+        ['Nilai Rapor', "SELECT COUNT(*) FROM nilai_rapor WHERE nisn = ?"],
+        ['Nilai UAM', "SELECT COUNT(*) FROM nilai_uam WHERE nisn = ?"],
+        ['Alumni', "SELECT COUNT(*) FROM alumni WHERE nisn = ?"]
+    ];
+    
+    echo "📊 Data Status:\n";
+    foreach ($checks as [$label, $sql]) {
+        $stmt = db()->prepare($sql);
+        $stmt->execute([$nisn]);
+        $count = $stmt->fetchColumn();
+        echo "  ✓ " . str_pad($label, 15) . ": " . $count . "\n";
     }
     
-    echo "\n[3/3] Verifying data...\n\n";
+    echo "\n📋 Student Info:\n";
+    echo "  NISN: " . $nisn . "\n";
+    echo "  Nama: Muhammad Rizki Al-Azhari\n";
+    echo "  Status: Alumni / Lulus\n";
+    echo "  Angkatan: 2026\n";
     
-    if (!empty($results)) {
-        echo "Verification Results:\n";
-        echo str_repeat("-", 60) . "\n";
-        printf("%-20s %-10s %s\n", "Type", "Count", "Last Updated");
-        echo str_repeat("-", 60) . "\n";
-        
-        foreach ($results as $row) {
-            printf(
-                "%-20s %-10s %s\n",
-                $row['type'],
-                $row['count'],
-                $row['last_updated'] ?? 'N/A'
-            );
-        }
-        
-        echo str_repeat("-", 60) . "\n";
-    }
-    
-    // Final check
-    $checkStmt = db()->prepare("SELECT COUNT(*) as total FROM alumni WHERE nisn = ?");
-    $checkStmt->execute(['1234567890123']);
-    $check = $checkStmt->fetch();
-    
-    if ($check['total'] > 0) {
-        echo "\n";
-        echo "=================================================\n";
-        echo "✓ SUCCESS! Data alumni berhasil dibuat.\n";
-        echo "=================================================\n\n";
-        
-        echo "📋 Data Alumni Test:\n";
-        echo "  NISN: 1234567890123\n";
-        echo "  Nama: Muhammad Rizki Al-Azhari\n";
-        echo "  Status: Alumni (Lulus)\n";
-        echo "  Angkatan: 2026\n\n";
-        
-        echo "📊 Nilai yang tersedia:\n";
-        echo "  ✓ Nilai Rapor: Semester 1-5 (semua mata pelajaran)\n";
-        echo "  ✓ Nilai UAM: Semua mata pelajaran\n";
-        echo "  ✓ Data Alumni: Lengkap\n\n";
-        
-        echo "🎯 Testing Cetak Leger:\n";
-        echo "  1. Login ke sistem\n";
-        echo "  2. Buka halaman 'Data Alumni'\n";
-        echo "  3. Cari: 'Muhammad Rizki' atau '1234567890123'\n";
-        echo "  4. Klik 'Lihat Nilai' untuk preview data\n";
-        echo "  5. Klik 'Cetak Leger' untuk test fitur cetak\n\n";
-        
-    } else {
-        echo "\n❌ ERROR: Data alumni tidak ditemukan!\n";
-        exit(1);
-    }
+    echo "\n🎯 Next: Login e-leger → Data Alumni → Search → Cetak Leger\n";
     
 } catch (Exception $e) {
-    echo "\n❌ MIGRATION FAILED: " . $e->getMessage() . "\n";
+    echo "❌ ERROR: " . $e->getMessage() . "\n";
+    if (method_exists($e, 'getTraceAsString')) {
+        echo "\nTrace: " . $e->getTraceAsString() . "\n";
+    }
     exit(1);
 }
 
-echo "=================================================\n\n";
+echo "\n=================================================\n\n";
 ?>
