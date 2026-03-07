@@ -421,12 +421,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tahunSurat = $mTiti[2];
         }
 
+        $pdo = db();
+
         // Tentukan NISN yang akan dicetak
         $nisnList = [];
         $alumniRows = [];
         if ($action === 'bulk_transkrip') {
             $angkatanFilter = (int) ($_POST['angkatan'] ?? 0);
-            $stmtBulk = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
+            $stmtBulk = $pdo->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
                 s.tempat_lahir, s.tgl_lahir, s.nis
                 FROM alumni a
                 LEFT JOIN siswa s ON s.nisn = a.nisn
@@ -438,7 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $nisn = trim((string) ($_POST['nisn'] ?? ''));
             if ($nisn !== '') {
-                $stmtOne = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
+                $stmtOne = $pdo->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
                     s.tempat_lahir, s.tgl_lahir, s.nis
                     FROM alumni a
                     LEFT JOIN siswa s ON s.nisn = a.nisn
@@ -479,8 +481,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $scriptDir = '';
         }
         $verifyPath = $scriptDir . '/verify.php';
-        $updateNomorSuratStmt = db()->prepare('UPDATE alumni SET nomor_surat = :nomor_surat WHERE nisn = :nisn');
-        db()->exec('CREATE TABLE IF NOT EXISTS alumni_verifikasi_meta (
+        $updateNomorSuratStmt = $pdo->prepare('UPDATE alumni SET nomor_surat = :nomor_surat WHERE nisn = :nisn');
+        $pdo->exec('CREATE TABLE IF NOT EXISTS alumni_verifikasi_meta (
             verification_token VARCHAR(64) PRIMARY KEY,
             nomor_surat VARCHAR(120) NULL,
             titimangsa VARCHAR(100) NULL,
@@ -488,13 +490,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ttd_nip VARCHAR(60) NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )');
-        $upsertVerifikasiMetaStmt = db()->prepare('INSERT INTO alumni_verifikasi_meta (verification_token, nomor_surat, titimangsa, ttd_nama, ttd_nip)
+        $upsertVerifikasiMetaStmt = $pdo->prepare('INSERT INTO alumni_verifikasi_meta (verification_token, nomor_surat, titimangsa, ttd_nama, ttd_nip)
             VALUES (:verification_token, :nomor_surat, :titimangsa, :ttd_nama, :ttd_nip)
             ON DUPLICATE KEY UPDATE
                 nomor_surat = VALUES(nomor_surat),
                 titimangsa = VALUES(titimangsa),
                 ttd_nama = VALUES(ttd_nama),
                 ttd_nip = VALUES(ttd_nip)');
+        $qrCacheDir = dirname(__DIR__, 3) . '/storage/cache/qr';
+        if (!is_dir($qrCacheDir)) {
+            @mkdir($qrCacheDir, 0775, true);
+        }
 
         $normalizeMapel = static function (string $text): string {
             $text = strtolower($text);
@@ -540,6 +546,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
             ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
         ];
+        $startedTransaction = false;
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        try {
         foreach ($alumniRows as $idx => $alumni) {
             if ($firstAlumniName === '') {
                 $firstAlumniName = (string) ($alumni['nama'] ?? '');
@@ -598,11 +611,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $verifyUrl = $baseUrl . $verifyPath . '?token=' . urlencode($alumni['verification_token']);
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
             $qrCodeSrc = $qrCodeUrl;
-            $qrContext = stream_context_create([
-                'http' => ['timeout' => 3],
-                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
-            ]);
-            $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
+            $qrBinary = false;
+            $qrCacheFile = $qrCacheDir . '/' . sha1((string) $alumni['verification_token']) . '.png';
+            if (is_file($qrCacheFile)) {
+                $qrBinary = @file_get_contents($qrCacheFile);
+            }
+            if ($qrBinary === false) {
+                $qrContext = stream_context_create([
+                    'http' => ['timeout' => 2],
+                    'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+                ]);
+                $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
+                if ($qrBinary !== false) {
+                    @file_put_contents($qrCacheFile, $qrBinary);
+                }
+            }
             if ($qrBinary !== false) {
                 $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
             }
@@ -806,6 +829,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             ' . $pageBreak;
         }
+        if ($startedTransaction && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+        } catch (Throwable $e) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
 
         $dompdf->loadHtml($allHtml);
         $dompdf->setPaper('A4', 'portrait');
@@ -994,7 +1026,7 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" onclick="submitWithTTD()">Cetak PDF</button>
+                <button type="button" id="btnSubmitTTD" class="btn btn-primary" onclick="submitWithTTD()">Cetak PDF</button>
             </div>
         </div>
     </div>
@@ -1002,6 +1034,36 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <script>
 let targetFormId = '';
+let isGeneratingTranscript = false;
+
+function showGenerateLoading(message) {
+    if (typeof Swal === 'undefined') {
+        return;
+    }
+    Swal.fire({
+        title: 'Menyiapkan Transkrip',
+        text: message,
+        icon: 'info',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: function() {
+            Swal.showLoading();
+        }
+    });
+}
+
+function showSwalWarning(message) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Perhatian',
+            text: message,
+            icon: 'warning',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+}
 
 function showModalTTD(formId) {
     targetFormId = formId;
@@ -1010,13 +1072,13 @@ function showModalTTD(formId) {
     if (targetFormId === 'formTranskrip') {
         const nisn = document.getElementById('selectAlumni').value;
         if (!nisn) {
-            alert('Silakan pilih alumni terlebih dahulu!');
+            showSwalWarning('Silakan pilih alumni terlebih dahulu!');
             return;
         }
     } else if (targetFormId === 'formBulkTranskrip') {
         const angkatan = document.querySelector('select[name="angkatan"]').value;
         if (!angkatan) {
-            alert('Silakan pilih angkatan terlebih dahulu!');
+            showSwalWarning('Silakan pilih angkatan terlebih dahulu!');
             return;
         }
     }
@@ -1026,6 +1088,10 @@ function showModalTTD(formId) {
 }
 
 function submitWithTTD() {
+    if (isGeneratingTranscript) {
+        return;
+    }
+
     const nomorUrutEl = document.getElementById('input_nomor_urut');
     const tglEl = document.getElementById('input_titimangsa');
     const namaEl = document.getElementById('input_nama_kepsek');
@@ -1087,7 +1153,26 @@ function submitWithTTD() {
         document.getElementById('nip_kepsek_bulk').value = nip;
     }
 
-    form.submit();
+    isGeneratingTranscript = true;
+    const submitBtn = document.getElementById('btnSubmitTTD');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+    }
+
+    const modalEl = document.getElementById('modalTTD');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
+
+    const loadingText = targetFormId === 'formBulkTranskrip'
+        ? 'Sistem sedang menyusun transkrip satu angkatan. Mohon tunggu...'
+        : 'Sistem sedang menyiapkan transkrip siswa. Mohon tunggu...';
+    showGenerateLoading(loadingText);
+
+    setTimeout(function() {
+        form.submit();
+    }, 80);
 }
 
 // Initialize search on alumni select
