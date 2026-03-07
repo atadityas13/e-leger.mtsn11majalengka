@@ -605,18 +605,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Header -->
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                     <tr>
-                        <td style="width: 98px; text-align: center; vertical-align: middle;">
+                        <td style="width: 105px; text-align: center; vertical-align: middle;">
                             ' . ($logoDataUri !== ''
-                                ? '<img src="' . $logoDataUri . '" style="width: 82px; height: 82px; object-fit: contain;">'
-                                : '<div style="width: 82px; height: 82px; border: 1px solid #000; margin: 0 auto; font-size: 10px; line-height: 82px; text-align: center;">LOGO</div>') . '
+                                ? '<img src="' . $logoDataUri . '" style="width: 90px; height: 90px; object-fit: contain;">'
+                                : '<div style="width: 90px; height: 90px; border: 1px solid #000; margin: 0 auto; font-size: 10px; line-height: 90px; text-align: center;">LOGO</div>') . '
                         </td>
                         <td style="text-align: center; vertical-align: middle;">
-                            <h2 style="margin: 0; font-size: 16px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h1 style="margin: 2px 0; font-size: 24px; line-height: 1.0; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.3px;">MTsN 11 MAJALENGKA</h1>
-                            <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
+                            <h2 style="margin: 0; font-size: 18px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+                            <h1 style="margin: 3px 0 2px 0; font-size: 32px; line-height: 1.1; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.5px;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
                             <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
                         </td>
-                        <td style="width: 98px;"></td>
+                        <td style="width: 105px;"></td>
                     </tr>
                 </table>
                 
@@ -697,15 +697,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <table style="width: 100%; margin-top: 8px;">
                     <tr>
                         <td style="width: 32%; vertical-align: top; text-align: left; padding-left: 8px;">
-                            <img src="' . $qrCodeUrl . '" style="width: 90px; height: 90px;"><br>
-                            <small style="font-size: 8px;">Scan untuk verifikasi</small>
+                            <img src="' . $qrCodeUrl . '" style="width: 90px; height: 90px;">
                         </td>
                         <td style="width: 68%; text-align: left; vertical-align: top; padding-top: 2px;">
                             <div style="width: 230px; margin-left: auto; margin-right: 20px;">
-                                <p style="margin: 0; font-size: 11px;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
-                                <p style="margin: 2px 0 48px 0; font-size: 11px;">Kepala Madrasah</p>
-                                <p style="margin: 0; font-weight: bold; font-size: 11px;">' . htmlspecialchars($namaKepsek) . '</p>
-                                <p style="margin: 1px 0 0 0; font-size: 10px;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
+                                <p style="margin: 0; font-size: 12px;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
+                                <p style="margin: 1px 0 48px 0; font-size: 12px;">Kepala Madrasah</p>
+                                <p style="margin: 0; font-weight: bold; font-size: 12px;">' . htmlspecialchars($namaKepsek) . '</p>
+                                <p style="margin: 1px 0 0 0; font-size: 12px;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
                             </div>
                         </td>
                     </tr>
