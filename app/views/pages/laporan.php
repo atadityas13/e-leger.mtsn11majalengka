@@ -503,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 foreach ($rowsMapel as $rowMapel) {
                     foreach ($normKeywords as $nkw) {
-                        if ($nkw !== '' && str_contains($rowMapel['norm'], $nkw)) {
+                        if ($nkw !== '' && strpos($rowMapel['norm'], $nkw) !== false) {
                             return $rowMapel;
                         }
                     }
