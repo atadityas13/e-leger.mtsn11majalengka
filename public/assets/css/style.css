@@ -102,7 +102,7 @@ body {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1rem;
-  padding: 1.2rem 0.8rem;
+  padding: 1rem 0.7rem;
   text-align: center;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
@@ -116,10 +116,10 @@ body {
 }
 
 .brand-wrap img {
-  height: 90px;
+  height: 140px;
   width: auto;
   object-fit: contain;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   transition: transform 0.2s ease;
 }
@@ -129,7 +129,7 @@ body {
 }
 
 .brand-wrap .small {
-  display: block;
+  display: none;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -138,6 +138,7 @@ body {
 }
 
 .brand-wrap .h5 {
+  display: none;
   font-size: 1.1rem;
   margin-bottom: 0;
   font-weight: 700;
