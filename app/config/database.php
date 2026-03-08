@@ -13,7 +13,7 @@ if (!function_exists('db')) {
 
         $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
         $port = $_ENV['DB_PORT'] ?? '3306';
-        $name = $_ENV['DB_NAME'] ?? 'e_leger_mtsn11';
+        $name = $_ENV['DB_NAME'] ?? 'tracer_mtsn11';
         $user = $_ENV['DB_USER'] ?? 'root';
         $pass = $_ENV['DB_PASS'] ?? '';
 

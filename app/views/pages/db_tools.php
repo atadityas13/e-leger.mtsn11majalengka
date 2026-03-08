@@ -1,7 +1,7 @@
 <?php
 /**
  * ========================================================
- * E-LEGER MTSN 11 MAJALENGKA
+ * TRACER MTSN 11 MAJALENGKA
  * ========================================================
  * 
  * Sistem Manajemen Data Nilai Siswa
@@ -10,7 +10,7 @@
  * File: Database Tools Administration Page
  * Deskripsi: Halaman tools untuk maintenance database - truncate, backup, restore
  * 
- * @package    E-Leger-MTSN11
+ * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'backu
     
     try {
         $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-        $name = $_ENV['DB_NAME'] ?? 'e_leger_mtsn11';
+        $name = $_ENV['DB_NAME'] ?? 'tracer_mtsn11';
         $user = $_ENV['DB_USER'] ?? 'root';
         $pass = $_ENV['DB_PASS'] ?? '';
         
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
         // Get database credentials
         $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
         $port = $_ENV['DB_PORT'] ?? '3306';
-        $name = $_ENV['DB_NAME'] ?? 'e_leger_mtsn11';
+        $name = $_ENV['DB_NAME'] ?? 'tracer_mtsn11';
         $user = $_ENV['DB_USER'] ?? 'root';
         $pass = $_ENV['DB_PASS'] ?? '';
         

@@ -1,7 +1,7 @@
 <?php
 /**
  * ========================================================
- * E-LEGER MTSN 11 MAJALENGKA
+ * TRACER MTSN 11 MAJALENGKA
  * ========================================================
  *
  * File: Finalisasi Nilai Per Kelompok Semester

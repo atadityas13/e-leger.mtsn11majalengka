@@ -1,7 +1,7 @@
 <?php
 /**
  * ========================================================
- * E-LEGER MTSN 11 MAJALENGKA
+ * TRACER MTSN 11 MAJALENGKA
  * ========================================================
  * 
  * Sistem Manajemen Data Nilai Siswa
@@ -10,7 +10,7 @@
  * File: User Management Page
  * Deskripsi: Halaman manajemen user - tambah, edit, hapus, ganti password
  * 
- * @package    E-Leger-MTSN11
+ * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License

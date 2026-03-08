@@ -1,16 +1,16 @@
 <?php
 /**
  * ========================================================
- * E-LEGER MTSN 11 MAJALENGKA
+ * TRACER MTSN 11 MAJALENGKA
  * ========================================================
  * 
  * Sistem Manajemen Data Nilai Siswa
  * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
  * 
  * File: Login Page
- * Deskripsi: Halaman autentikasi user untuk akses aplikasi e-leger
+ * Deskripsi: Halaman autentikasi user untuk akses aplikasi TRACER
  * 
- * @package    E-Leger-MTSN11
+ * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License

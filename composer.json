@@ -1,6 +1,6 @@
 {
-  "name": "mtsn11majalengka/e-leger",
-  "description": "Aplikasi e-Leger MTsN 11 Majalengka",
+  "name": "mtsn11majalengka/traces",
+  "description": "Aplikasi Tracer MTsN 11 Majalengka",
   "type": "project",
   "require": {
     "php": ">=7.4",

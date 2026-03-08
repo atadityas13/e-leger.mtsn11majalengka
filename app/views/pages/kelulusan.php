@@ -1,7 +1,7 @@
 <?php
 /**
  * ========================================================
- * E-LEGER MTSN 11 MAJALENGKA
+ * TRACER MTSN 11 MAJALENGKA
  * ========================================================
  * 
  * Sistem Manajemen Data Nilai Siswa
@@ -10,7 +10,7 @@
  * File: Kelulusan & Migrasi Alumni Page
  * Deskripsi: Halaman untuk migrasi siswa aktif ke alumni dengan perhitungan nilai ijazah
  * 
- * @package    E-Leger-MTSN11
+ * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License
