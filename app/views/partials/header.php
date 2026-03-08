@@ -126,22 +126,22 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
                     </div>
                     <div class="modal-body">
                         <div class="text-center mb-3">
-                            <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 86px; width: auto; object-fit: contain;">
+                            <div style="display: inline-block; padding: 0.55rem 0.9rem; border-radius: 0.85rem; background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); box-shadow: 0 6px 18px rgba(6, 78, 59, 0.18);">
+                                <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 86px; width: auto; object-fit: contain;">
+                            </div>
                         </div>
                         <p class="mb-2 fw-semibold">TRACER MTsN 11 Majalengka</p>
                         <p class="mb-2 small text-secondary">Transkrip &amp; Academic Ledger</p>
                         <p class="mb-2 text-secondary"><em>Tracing Progress, Graduating Success.</em></p>
                         <p class="small text-secondary mb-3">
-                            Sistem manajemen transkrip nilai akademik berbasis web untuk MTsN 11 Majalengka,
-                            dengan verifikasi QR code, kontrol semester, dan pelacakan progres siswa dari Semester 1 hingga UAM.
+                            Sistem manajemen pelacakan progres nilai siswa hingga menjadi Transkrip nilai akhir dengan fitur verifikasi QR code, kontrol semester, finalisasi nilai, dan proses kelulusan. Dikembangkan khusus untuk MTsN 11 Majalengka guna mendukung proses akademik yang lebih efisien, transparan, dan akurat.
                         </p>
                         <hr>
                         <div class="small">
-                            <div><strong>First Created:</strong> March 6, 2026</div>
-                            <div><strong>Published:</strong> March 2026</div>
+                            <div><strong>Published:</strong> March 6, 2026</div>
                             <div><strong>Version:</strong> TRACER v1.0.0</div>
                             <div><strong>Developer:</strong> <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
-                            <div class="mt-2"><strong>Special Honor:</strong> Ibu Nia Haryati, S.Pd., Admin Kurikulum yang menginspirasi dan menginisiasi pengembangan aplikasi ini.</div>
+                            <div class="mt-2"><strong>Special Honor and Thanks:</strong> Ibu Nia Haryati, S.Pd., Admin Kurikulum yang menginspirasi dan menginisiasi pengembangan aplikasi ini.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
