@@ -753,9 +753,7 @@ $isLoggedIn = current_user() !== null;
             <img src="assets/logo-kemenag.png" alt="Logo Kemenag" class="logo-kemenag-static">
             <button type="button" class="landing-brand border-0" data-bs-toggle="modal" data-bs-target="#aboutTracerModal" aria-label="Tentang Aplikasi TRACER">
                 <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" class="logo-tracer">
-                <span>
-                <small><strong>Tracing Progress,<br>Graduating Success.</strong></small>
-            </span>
+                <span class="landing-brand-copy">Tracing Progress,<br>Graduating Success.</span>
             </button>
         </div>
 

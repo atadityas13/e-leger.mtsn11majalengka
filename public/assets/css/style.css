@@ -337,13 +337,14 @@ body {
 .landing-brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #052e16;
+  justify-content: flex-start;
+  gap: 0.85rem;
+  color: #ffffff;
   background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
   text-decoration: none;
-  padding: 0.52rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(5, 150, 105, 0.45);
+  padding: 0.58rem 0.8rem;
+  border-radius: 1rem;
+  border: 0;
   box-shadow: 0 10px 24px rgba(6, 78, 59, 0.28);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
@@ -356,7 +357,7 @@ body {
 }
 
 .landing-brand:focus-visible {
-  outline: 2px solid rgba(6, 78, 59, 0.5);
+  outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: 2px;
 }
 
@@ -364,9 +365,32 @@ body {
   width: 92px;
   height: 92px;
   object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 8px 16px rgba(6, 78, 59, 0.22));
+}
+
+.landing-brand-copy {
+  position: relative;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: 0.025em;
+  text-align: left;
+  text-wrap: balance;
+  padding: 0.45rem 0.65rem;
   border-radius: 0.5rem;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
-  filter: drop-shadow(0 8px 18px rgba(6, 78, 59, 0.24));
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 4px 12px rgba(6, 78, 59, 0.15);
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(6, 78, 59, 0.2);
 }
 
 .landing-login-btn {
@@ -728,6 +752,13 @@ body {
   .landing-brand .logo-tracer {
     width: 74px;
     height: 74px;
+  }
+
+  .landing-brand-copy {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    padding: 0.38rem 0.55rem;
+    letter-spacing: 0.02em;
   }
 
   .upload-progress-head {
