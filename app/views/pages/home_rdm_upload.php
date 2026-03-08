@@ -747,13 +747,13 @@ $isLoggedIn = current_user() !== null;
     <div class="landing-blur two"></div>
 
     <header class="landing-topbar container py-3 py-md-4">
-        <a class="landing-brand" href="index.php?page=home">
+        <button type="button" class="landing-brand border-0" data-bs-toggle="modal" data-bs-target="#aboutTracerModal" aria-label="Tentang Aplikasi TRACER">
             <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
             <span>
                 <strong>TRACER</strong>
                 <small>MTsN 11 Majalengka</small>
             </span>
-        </a>
+        </button>
 
         <a href="index.php?page=<?= $isLoggedIn ? 'dashboard' : 'login' ?>" class="btn btn-light landing-login-btn">
             <i class="bi bi-box-arrow-in-right me-1"></i>
@@ -771,10 +771,6 @@ $isLoggedIn = current_user() !== null;
         <?php endif; ?>
 
         <section class="landing-intro landing-reveal mb-3" style="--reveal-delay: 40ms;">
-            <div class="landing-intro-brand mb-2">
-                <img src="assets/logo-tracer-mtsn11majalengka.png" alt="Logo TRACER">
-                <span>TRACER MTsN 11 MAJALENGKA</span>
-            </div>
             <p class="landing-kicker mb-1">TRACER | Transkrip &amp; Academic Ledger</p>
             <h1 class="landing-title mb-1">Portal Upload Nilai RDM</h1>
             <p class="landing-subtitle mb-2">Tracing Progress, Graduating Success. Unggah nilai rapor berbasis RDM dengan validasi ketat, selaras semester aktif, dan siap finalisasi.</p>
@@ -968,6 +964,40 @@ $isLoggedIn = current_user() !== null;
         <?php endif; ?>
 
     </main>
+
+    <div class="modal fade" id="aboutTracerModal" tabindex="-1" aria-labelledby="aboutTracerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header" style="background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); color: #fff;">
+                    <h5 class="modal-title" id="aboutTracerModalLabel">Tentang Aplikasi TRACER</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <div style="display: inline-block; padding: 0.55rem 0.9rem; border-radius: 0.85rem; background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); box-shadow: 0 6px 18px rgba(6, 78, 59, 0.18);">
+                            <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 86px; width: auto; object-fit: contain;">
+                        </div>
+                    </div>
+                    <p class="mb-2 fw-semibold">TRACER MTsN 11 Majalengka</p>
+                    <p class="mb-2 small text-secondary">Transkrip &amp; Academic Ledger</p>
+                    <p class="mb-2 text-secondary"><em>Tracing Progress, Graduating Success.</em></p>
+                    <p class="small text-secondary mb-3">
+                        Sistem manajemen pelacakan progres nilai siswa hingga menjadi transkrip nilai akhir dengan fitur verifikasi QR, kontrol semester, finalisasi nilai, dan proses kelulusan. Dikembangkan khusus untuk MTsN 11 Majalengka guna mendukung proses akademik yang efisien, transparan, dan akurat.
+                    </p>
+                    <hr>
+                    <div class="small">
+                        <div><strong>Published:</strong> March 6, 2026</div>
+                        <div><strong>Version:</strong> TRACER v1.0.0</div>
+                        <div><strong>Developer:</strong> <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
+                        <div class="mt-2"><strong>Special Honor and Thanks:</strong> Ibu Nia Haryati, S.Pd., Admin Kurikulum yang menginspirasi dan menginisiasi pengembangan aplikasi ini.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer class="landing-footer landing-reveal" style="--reveal-delay: 260ms;">
         <div class="container py-3">
