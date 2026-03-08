@@ -37,7 +37,7 @@ $page = $_GET['page'] ?? 'dashboard';
 $isAdmin = ($user['role'] ?? '') === 'admin';
 $isKurikulum = ($user['role'] ?? '') === 'kurikulum';
 $canManageTokens = $isAdmin || $isKurikulum;
-$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tools', 'upload-token-management'], true);
+$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tools'], true);
 ?>
 <!doctype html>
 <html lang="id">

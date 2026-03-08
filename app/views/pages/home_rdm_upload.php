@@ -933,36 +933,35 @@ $isLoggedIn = current_user() !== null;
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="confirm_upload">
                                 
-                                <!-- Internal Verification Token -->
-                                <div class="col-12">
-                                    <label for="verification_token" class="form-label small fw-semibold">Token Verifikasi Konfirmasi</label>
-                                    <input type="text" class="form-control" id="verification_token" name="verification_token" placeholder="Masukkan token dari atas" maxlength="12" required>
-                                </div>
+                                <!-- Internal Verification Token (auto-filled) -->
+                                <input type="hidden" name="verification_token" value="<?= e((string) ($homePreview['verification_token'] ?? '')) ?>">
 
                                 <!-- Admin Upload Token (if required) -->
                                 <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
                                     <div class="col-12">
-                                        <label for="admin_upload_token" class="form-label small fw-semibold">Token dari Admin/Kurikulum</label>
+                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmasi dari Admin/Kurikulum</label>
                                         <div class="input-group">
                                             <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" 
-                                                   placeholder="<?= $currentUploadToken ? e($currentUploadToken) : 'Minta token ke admin' ?>" 
+                                                   placeholder="<?= $currentUploadToken ? e($currentUploadToken) : 'Hubungi admin untuk membuat token' ?>" 
                                                    maxlength="12" required>
                                             <?php if ($currentUploadToken): ?>
-                                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAdminToken()">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="copyAdminToken()">
                                                     <i class="bi bi-clipboard me-1"></i> Copy
                                                 </button>
                                             <?php endif; ?>
                                         </div>
                                         <?php if ($currentUploadToken): ?>
-                                            <div class="form-text">✓ <strong><?= e($currentUploadToken) ?></strong> tersedia</div>
+                                            <div class="form-text text-success mt-2"><i class="bi bi-check-circle me-1"></i>Token tersedia: <strong><?= e($currentUploadToken) ?></strong></div>
                                         <?php else: ?>
-                                            <div class="form-text text-warning">⚠️ Hubungi admin untuk token</div>
+                                            <div class="form-text text-danger mt-2"><i class="bi bi-exclamation-triangle me-1"></i><a href="index.php?page=upload_token_management" target="_blank" class="link-danger">Admin: Buat token di sini</a></div>
                                         <?php endif; ?>
                                     </div>
+                                <?php else: ?>
+                                    <!-- Token tidak diaktifkan -->
                                 <?php endif; ?>
 
                                 <div class="col-12 d-grid gap-2 pt-2">
-                                    <button type="submit" class="btn btn-success btn-lg fw-semibold">
+                                    <button type="submit" class="btn btn-success btn-lg fw-semibold <?= !($requireUploadToken && $tokenMode !== 'disabled') || $currentUploadToken ? '' : 'disabled' ?>" <?= !($requireUploadToken && $tokenMode !== 'disabled') || $currentUploadToken ? '' : 'disabled' ?>>
                                         <i class="bi bi-check2-circle me-2"></i> Konfirmasi Simpan
                                     </button>
                                 </div>
