@@ -1,0 +1,21 @@
+
+# Exclude markdown files from deployment/export
+*.md export-ignore
+*.MD export-ignore
+
+# Exclude development files
+.env.example export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+
+# Exclude IDE/Editor configs
+.vscode/ export-ignore
+.idea/ export-ignore
+*.code-workspace export-ignore
+
+# Exclude test databases
+database/backups/ export-ignore
+/database/*.sql export-ignore
+
+# Keep important files
+!README.md
