@@ -62,7 +62,7 @@ $flash = get_flash();
             background: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
             color: #fff;
             border-radius: 0.95rem 0.95rem 0 0;
-            padding: 1.8rem 1.5rem;
+            padding: 1.15rem 1.2rem 1rem;
             text-align: center;
         }
 
@@ -71,16 +71,16 @@ $flash = get_flash();
         }
 
         .login-brand-subtitle {
-            margin: 0.65rem 0 0;
-            font-size: 0.9rem;
+            margin: 0.45rem 0 0;
+            font-size: 0.88rem;
             font-weight: 600;
             opacity: 0.95;
             letter-spacing: 0.03em;
         }
 
         .login-brand-tagline {
-            margin: 0.18rem 0 0;
-            font-size: 0.82rem;
+            margin: 0.1rem 0 0;
+            font-size: 0.79rem;
             font-style: italic;
             opacity: 0.9;
         }
@@ -91,6 +91,17 @@ $flash = get_flash();
             object-fit: contain;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
             animation: slideDown 0.6s ease-out;
+        }
+
+        .login-panel .form-label {
+            margin-bottom: 0.35rem;
+            font-size: 0.9rem;
+        }
+
+        .login-panel .input-group-text,
+        .login-panel .form-control {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
         }
 
         @keyframes slideDown {
@@ -106,7 +117,7 @@ $flash = get_flash();
 
         @media (max-width: 576px) {
             .login-brand {
-                padding: 1.3rem 1rem;
+                padding: 1rem 0.9rem 0.85rem;
             }
 
             .login-brand-logo img {
@@ -114,11 +125,11 @@ $flash = get_flash();
             }
 
             .login-brand-subtitle {
-                font-size: 0.82rem;
+                font-size: 0.8rem;
             }
 
             .login-brand-tagline {
-                font-size: 0.76rem;
+                font-size: 0.74rem;
             }
         }
 
@@ -156,8 +167,8 @@ $flash = get_flash();
                 <p class="login-brand-tagline">Tracing Progress, Graduating Success.</p>
             </div>
 
-            <div class="login-panel p-4 p-md-5">
-                <h2 class="h5 mb-1">Masuk ke Aplikasi</h2>
+            <div class="login-panel p-3 p-md-4">
+                <h2 class="h5 mb-3">Masuk ke Aplikasi</h2>
 
                 <?php if ($flash['error'] ?? null): ?>
                     <div class="alert alert-danger" role="alert">
@@ -176,7 +187,7 @@ $flash = get_flash();
                         </div>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label">Password</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-lock"></i></span>

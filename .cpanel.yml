@@ -1,8 +1,0 @@
----
-deployment:
-  tasks:
-    # Delete .md files dari root directory
-    - /bin/find . -maxdepth 1 -type f -name "*.md" -delete
-    # Delete .md files dari .github directory
-    - /bin/find ./.github -type f -name "*.md" -delete 2>/dev/null || true
-
