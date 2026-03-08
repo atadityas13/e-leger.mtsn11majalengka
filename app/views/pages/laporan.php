@@ -790,7 +790,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </tr>
                         <tr>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 72px;">Rapor<br>
-                                <span style="font-size: 8px; font-weight: normal;">(Rata-rata Sem. 1-5)</span></th>
+                                <span style="font-size: 8px; font-weight: normal;">(Rata-rata<br>Semester 1-5)</span></th>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">UAM<br>
                                 <span style="font-size: 8px; font-weight: normal;">(Ujian Akhir Madrasah)</span></th>
                             <th style="padding: 3px 2px; border: 1px solid #000; text-align: center; width: 90px;">
