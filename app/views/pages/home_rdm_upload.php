@@ -905,27 +905,40 @@ $isLoggedIn = current_user() !== null;
         <?php endif; ?>
 
         <section class="landing-compact-info">
-            <div class="row g-3">
-                <div class="col-lg-6">
-                    <div class="landing-info-card h-100">
-                        <h2 class="h6 mb-2">Ketentuan Inti Upload</h2>
-                        <ul class="landing-checklist-compact mb-0">
-                            <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
-                            <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
-                            <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
-                            <li>Data finalisasi tidak akan ditimpa.</li>
-                        </ul>
+            <div class="accordion landing-rules-accordion" id="landingRulesAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="rules-basic-heading">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#rules-basic" aria-expanded="true" aria-controls="rules-basic">
+                            <i class="bi bi-journal-check me-2"></i> Ketentuan Inti Upload
+                        </button>
+                    </h2>
+                    <div id="rules-basic" class="accordion-collapse collapse show" aria-labelledby="rules-basic-heading" data-bs-parent="#landingRulesAccordion">
+                        <div class="accordion-body">
+                            <ul class="landing-checklist-compact mb-0">
+                                <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
+                                <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
+                                <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
+                                <li>Data finalisasi tidak akan ditimpa.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="landing-info-card h-100">
-                        <h2 class="h6 mb-2">Validasi Ketat Sistem</h2>
-                        <ul class="landing-checklist-compact mb-0">
-                            <li>File harus hasil ekspor asli RDM.</li>
-                            <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
-                            <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
-                            <li>Mapel dibaca otomatis dari header template.</li>
-                        </ul>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="rules-validation-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rules-validation" aria-expanded="false" aria-controls="rules-validation">
+                            <i class="bi bi-shield-lock me-2"></i> Validasi Ketat Sistem
+                        </button>
+                    </h2>
+                    <div id="rules-validation" class="accordion-collapse collapse" aria-labelledby="rules-validation-heading" data-bs-parent="#landingRulesAccordion">
+                        <div class="accordion-body">
+                            <ul class="landing-checklist-compact mb-0">
+                                <li>File harus hasil ekspor asli RDM.</li>
+                                <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
+                                <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
+                                <li>Mapel dibaca otomatis dari header template.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>

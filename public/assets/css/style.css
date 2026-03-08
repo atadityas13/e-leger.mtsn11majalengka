@@ -439,6 +439,9 @@ body {
 .landing-upload {
   border-radius: 1.2rem;
   overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.1);
 }
 
 .landing-quick-meta {
@@ -468,11 +471,15 @@ body {
   border: none;
   font-weight: 600;
   min-height: 42px;
+  border-radius: 0.75rem;
+  transition: transform 0.18s ease, box-shadow 0.22s ease, filter 0.2s ease;
 }
 
 .landing-upload-btn:hover {
   color: #fff;
   filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(5, 150, 105, 0.24);
 }
 
 .upload-progress-area {
@@ -575,17 +582,36 @@ body {
   margin-top: 0.25rem;
 }
 
-.landing-info-card {
+.landing-rules-accordion .accordion-item {
   border-radius: 0.9rem;
   border: 1px solid rgba(15, 23, 42, 0.09);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-  padding: 1rem 1.05rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
 }
 
-.landing-info-card h2 {
-  color: #064e3b;
+.landing-rules-accordion .accordion-button {
   font-weight: 700;
+  color: #064e3b;
+  background: #ffffff;
+  box-shadow: none;
+  padding: 0.85rem 1rem;
+}
+
+.landing-rules-accordion .accordion-button:not(.collapsed) {
+  color: #065f46;
+  background: #ecfdf5;
+}
+
+.landing-rules-accordion .accordion-button:focus {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 0 0.18rem rgba(16, 185, 129, 0.2);
+}
+
+.landing-rules-accordion .accordion-body {
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.85rem 1rem 1rem;
 }
 
 .landing-checklist-compact {
