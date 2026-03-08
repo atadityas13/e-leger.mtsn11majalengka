@@ -123,8 +123,8 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
             <header class="topbar card shadow-sm border-0 mb-3">
                 <?php $set = setting_akademik(); ?>
                 <div class="topbar-left">
-                    <div class="fw-semibold text-white">TRACER - Tracing Progress, Graduating Success.</div>
-                    <small class="text-white-50">Transkrip & Academic Ledger</small>
+                    <div class="fw-semibold text-white">TRACER<br>Transkrip & Academic Ledger</div>
+                    <small class="text-white-50">Tracing Progress, Graduating Success.</small>
                 </div>
                 <div class="topbar-center">
                     <div class="fw-semibold fs-5 text-white">TA: <?= e($set['tahun_ajaran']) ?></div>
