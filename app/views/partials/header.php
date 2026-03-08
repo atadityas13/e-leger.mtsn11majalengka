@@ -134,7 +134,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
                         <p class="mb-2 small text-secondary">Transkrip &amp; Academic Ledger</p>
                         <p class="mb-2 text-secondary"><em>Tracing Progress, Graduating Success.</em></p>
                         <p class="small text-secondary mb-3">
-                            Sistem manajemen pelacakan progres nilai siswa hingga menjadi Transkrip nilai akhir dengan fitur verifikasi QR code, kontrol semester, finalisasi nilai, dan proses kelulusan. Dikembangkan khusus untuk MTsN 11 Majalengka guna mendukung proses akademik yang lebih efisien, transparan, dan akurat.
+                            Sistem manajemen pelacakan progres nilai siswa hingga menjadi transkrip nilai akhir dengan fitur verifikasi QR, kontrol semester, finalisasi nilai, dan proses kelulusan. Dikembangkan khusus untuk MTsN 11 Majalengka guna mendukung proses akademik yang efisien, transparan, dan akurat.
                         </p>
                         <hr>
                         <div class="small">
