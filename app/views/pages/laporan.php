@@ -841,29 +841,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'bulk_transkrip') {
             $filename = 'transkrip_angkatan_' . $angkatanFilter . '.pdf';
-            $pdfTitle = 'Transkrip Angkatan ' . $angkatanFilter;
         } else {
             $safeName = trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $firstAlumniName), '_');
             if ($safeName === '') {
                 $safeName = 'transkrip_' . $nisnList[0];
             }
             $filename = $safeName . '.pdf';
-            $pdfTitle = $firstAlumniName !== '' ? $firstAlumniName : $safeName;
         }
 
         $dompdf->loadHtml($allHtml);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        // Populate PDF metadata title so browser viewers can show a friendly tab title.
-        $canvas = $dompdf->getCanvas();
-        if (is_object($canvas) && method_exists($canvas, 'get_cpdf')) {
-            $cpdf = $canvas->get_cpdf();
-            if (is_object($cpdf) && method_exists($cpdf, 'setTitle')) {
-                $cpdf->setTitle((string) $pdfTitle);
-            }
-        }
-        // Open PDF inline with explicit filename so browser viewer does not fallback to "index.php".
         $pdfBinary = $dompdf->output();
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
@@ -933,7 +922,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
                     </div>
                 <?php else: ?>
-                <form method="post" action="cetak_transkrip_loader.php" id="formTranskrip" target="_blank" class="row g-3 align-items-end">
+                <form method="post" id="formTranskrip" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_value">
@@ -971,7 +960,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-exclamation-triangle"></i> Data alumni sudah ada, tetapi belum ada <strong>angkatan lulus</strong> yang terisi. Lengkapi angkatan di menu <strong>Kelulusan</strong> agar fitur cetak per angkatan bisa digunakan.
                     </div>
                 <?php else: ?>
-                <form method="post" action="cetak_transkrip_loader.php" id="formBulkTranskrip" target="_blank" class="row g-3 align-items-end">
+                <form method="post" id="formBulkTranskrip" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="bulk_transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_bulk">
