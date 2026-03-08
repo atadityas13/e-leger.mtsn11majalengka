@@ -118,7 +118,16 @@ if ($scriptDir === '.' || $scriptDir === '/') {
     $scriptDir = '';
 }
 
-$stmtMapel = $pdo->query('SELECT id, nama_mapel, kelompok FROM mapel ORDER BY urutan_tampil, nama_mapel');
+$sqlMapel = 'SELECT id, nama_mapel, kelompok FROM mapel ORDER BY urutan_tampil, nama_mapel';
+try {
+    $stmtMapel = $pdo->query($sqlMapel);
+} catch (\PDOException $e) {
+    // Backward compatibility for old schema without urutan_tampil column.
+    if ((int) $e->getCode() !== 42 && strpos($e->getMessage(), 'Unknown column') === false) {
+        throw $e;
+    }
+    $stmtMapel = $pdo->query('SELECT id, nama_mapel, kelompok FROM mapel ORDER BY nama_mapel');
+}
 $dataMapel = $stmtMapel->fetchAll();
 $mapelById = [];
 foreach ($dataMapel as $m) {
