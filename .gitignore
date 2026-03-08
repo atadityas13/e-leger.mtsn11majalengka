@@ -1,8 +1,14 @@
 /vendor/
 /.env
+
+# Database & exports (local only)
 /public/uploads/*
 !/public/uploads/.gitkeep
 /storage/exports/*
 !/storage/exports/.gitkeep
 /database/backups/*
 !/database/backups/.gitkeep
+
+# Local development files (optional - for development use)
+.DS_Store
+Thumbs.db
