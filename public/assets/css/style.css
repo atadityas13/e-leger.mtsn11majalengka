@@ -363,11 +363,10 @@ body {
 .landing-brand .logo-tracer {
   width: 92px;
   height: 92px;
-  background: #ffffff;
-  border-radius: 0.72rem;
-  padding: 0.32rem;
   object-fit: contain;
-  filter: drop-shadow(0 8px 18px rgba(6, 78, 59, 0.22));
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+  filter: drop-shadow(0 8px 18px rgba(6, 78, 59, 0.24));
 }
 
 .landing-login-btn {
