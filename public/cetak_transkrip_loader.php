@@ -122,6 +122,7 @@ foreach ($forwardFields as $field) {
             <?php foreach ($forwardData as $key => $value): ?>
                 <input type="hidden" name="<?= e($key) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
+            <input type="hidden" name="_transport" value="loader-fetch">
             <noscript>
                 <button type="submit">Lanjutkan Ke Preview PDF</button>
             </noscript>
@@ -129,13 +130,76 @@ foreach ($forwardFields as $field) {
     </main>
 
     <script>
+        function getFilenameFromDisposition(disposition) {
+            if (!disposition) {
+                return '';
+            }
+
+            var utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match && utf8Match[1]) {
+                try {
+                    return decodeURIComponent(utf8Match[1].replace(/\"/g, ''));
+                } catch (e) {
+                    return utf8Match[1].replace(/\"/g, '');
+                }
+            }
+
+            var asciiMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+            return asciiMatch && asciiMatch[1] ? asciiMatch[1] : '';
+        }
+
+        function renderError(message) {
+            var card = document.querySelector('.card');
+            if (card) {
+                card.innerHTML = '<h1 style="font-size:28px;margin-bottom:12px;">Gagal Membuat Transkrip</h1>' +
+                    '<p style="margin-bottom:16px;">' + message + '</p>' +
+                    '<p class="hint">Silakan kembali ke halaman sebelumnya dan coba lagi.</p>';
+            }
+            document.title = 'Gagal Menyiapkan Transkrip';
+        }
+
         window.addEventListener('DOMContentLoaded', function () {
             var form = document.getElementById('forwardForm');
-            if (form) {
+            if (!form || !window.fetch || !window.URL || !window.Blob) {
                 setTimeout(function () {
-                    form.submit();
+                    if (form) {
+                        form.submit();
+                    }
                 }, 50);
+                return;
             }
+
+            var formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) {
+                    return response.text().then(function (text) {
+                        throw new Error(text || ('HTTP ' + response.status));
+                    });
+                }
+
+                var contentType = response.headers.get('Content-Type') || '';
+                if (contentType.toLowerCase().indexOf('application/pdf') === -1) {
+                    return response.text().then(function (text) {
+                        throw new Error(text || 'Respons bukan PDF.');
+                    });
+                }
+
+                var disposition = response.headers.get('Content-Disposition') || '';
+                var filename = getFilenameFromDisposition(disposition) || 'transkrip.pdf';
+
+                return response.blob().then(function (blob) {
+                    var file = new File([blob], filename, { type: 'application/pdf' });
+                    var blobUrl = URL.createObjectURL(file);
+                    document.title = filename;
+                    window.location.replace(blobUrl);
+                });
+            }).catch(function (error) {
+                renderError(error.message || 'Terjadi kesalahan saat membuat PDF.');
+            });
         });
     </script>
 </body>

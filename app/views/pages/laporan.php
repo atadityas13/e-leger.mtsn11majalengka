@@ -839,18 +839,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw $e;
         }
 
-        $dompdf->loadHtml($allHtml);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-        
         if ($action === 'bulk_transkrip') {
             $filename = 'transkrip_angkatan_' . $angkatanFilter . '.pdf';
+            $pdfTitle = 'Transkrip Angkatan ' . $angkatanFilter;
         } else {
             $safeName = trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $firstAlumniName), '_');
             if ($safeName === '') {
                 $safeName = 'transkrip_' . $nisnList[0];
             }
             $filename = $safeName . '.pdf';
+            $pdfTitle = $firstAlumniName !== '' ? $firstAlumniName : $safeName;
+        }
+
+        $dompdf->loadHtml($allHtml);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        // Populate PDF metadata title so browser viewers can show a friendly tab title.
+        $canvas = $dompdf->getCanvas();
+        if (is_object($canvas) && method_exists($canvas, 'get_cpdf')) {
+            $cpdf = $canvas->get_cpdf();
+            if (is_object($cpdf) && method_exists($cpdf, 'setTitle')) {
+                $cpdf->setTitle((string) $pdfTitle);
+            }
         }
         // Open PDF inline with explicit filename so browser viewer does not fallback to "index.php".
         $pdfBinary = $dompdf->output();
