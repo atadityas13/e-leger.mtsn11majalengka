@@ -8,12 +8,9 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-if (!is_logged_in()) {
-    http_response_code(403);
-    exit('Akses ditolak. Silakan login terlebih dahulu.');
-}
+require_login();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf()) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf_request()) {
     http_response_code(403);
     exit('CSRF validation failed');
 }
