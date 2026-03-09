@@ -159,10 +159,10 @@ $tokenHistory = $stmt->fetchAll();
                             <?php endif; ?>
                         </div>
                     </div>
-                    <form method="post" style="display: inline;">
+                    <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Konfirmasi" data-confirm-text="Ubah status verifikasi token?">
                         <?= csrf_input() ?>
                         <input type="hidden" name="action" value="toggle_require">
-                        <button type="submit" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>" onclick="return confirm('Ubah status verifikasi token?')">
+                        <button type="submit" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>">
                             <?= $requireToken ? 'NONAKTIFKAN' : 'AKTIFKAN' ?>
                         </button>
                     </form>
@@ -171,7 +171,7 @@ $tokenHistory = $stmt->fetchAll();
                 <div class="mb-3">
                     <div class="fw-semibold mb-2">Mode Token</div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <form method="post" style="display: inline;">
+                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Ubah mode token ke Manual?">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="change_mode">
                             <input type="hidden" name="mode" value="manual">
@@ -179,7 +179,7 @@ $tokenHistory = $stmt->fetchAll();
                                 🔧 Manual
                             </button>
                         </form>
-                        <form method="post" style="display: inline;">
+                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Ubah mode token ke Harian Otomatis?">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="change_mode">
                             <input type="hidden" name="mode" value="daily">
@@ -187,7 +187,7 @@ $tokenHistory = $stmt->fetchAll();
                                 📅 Harian Otomatis
                             </button>
                         </form>
-                        <form method="post" style="display: inline;">
+                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Nonaktifkan mode token?">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="change_mode">
                             <input type="hidden" name="mode" value="disabled">
@@ -237,19 +237,19 @@ $tokenHistory = $stmt->fetchAll();
                 <div class="mt-3 pt-3 border-top">
                     <div class="d-grid gap-2">
                         <?php if ($tokenMode !== 'disabled'): ?>
-                            <form method="post">
+                            <form method="post" class="confirm-form" data-confirm-title="Buat Token Manual" data-confirm-text="Apakah Anda yakin ingin membuat token manual baru?">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="generate_manual">
-                                <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Buat token manual baru?')">
+                                <button type="submit" class="btn btn-primary btn-sm">
                                     + Buat Token Manual
                                 </button>
                             </form>
                         <?php endif; ?>
                         <?php if ($tokenMode === 'daily' || $tokenMode === 'manual'): ?>
-                            <form method="post">
+                            <form method="post" class="confirm-form" data-confirm-title="Generate Token Harian" data-confirm-text="Apakah Anda yakin ingin generate token harian baru?">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="generate_daily">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Generate token harian baru?')">
+                                <button type="submit" class="btn btn-success btn-sm">
                                     📅 Generate Token Harian
                                 </button>
                             </form>
@@ -322,10 +322,47 @@ $tokenHistory = $stmt->fetchAll();
 </div>
 
 <script>
+// SweetAlert confirmation for forms
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle all forms with confirmation
+    document.querySelectorAll('.confirm-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = this.dataset.confirmTitle || 'Konfirmasi';
+            const text = this.dataset.confirmText || 'Apakah Anda yakin?';
+            const formElement = this;
+            
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Lanjutkan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit form programmatically
+                    formElement.submit();
+                }
+            });
+        });
+    });
+});
+
+// Copy to clipboard with SweetAlert
 function copyToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
-            alert('Token copied to clipboard!');
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Token berhasil disalin ke clipboard',
+                timer: 1500,
+                showConfirmButton: false
+            });
         }).catch(err => {
             console.error('Failed to copy:', err);
             fallbackCopy(text);
@@ -342,7 +379,13 @@ function fallbackCopy(text) {
     textarea.select();
     document.execCommand('copy');
     document.body.removeChild(textarea);
-    alert('Token copied to clipboard!');
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Token berhasil disalin ke clipboard',
+        timer: 1500,
+        showConfirmButton: false
+    });
 }
 </script>
 
