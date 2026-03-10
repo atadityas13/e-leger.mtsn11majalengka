@@ -3,28 +3,7 @@
  * ========================================================
  * TRACER MTSN 11 MAJALENGKA
  * ========================================================
- * 
- * Sistem Manajemen Data Nilai Siswa
- * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
- * 
  * File: Upload Token Management Page
- * Deskripsi: Admin/Kurikulum dapat manage token harian untuk verifikasi upload
- * 
- * @package    TRACER-MTSN11
- * @author     MTsN 11 Majalengka Development Team
- * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
- * @license    Proprietary License
- * @version    1.0.0
- * @since      2026-03-09
- * 
- * Features:
- * - Toggle verifikasi token aktif/non-aktif
- * - Pilih mode token: manual, daily auto, atau disabled
- * - Generate token manual on-demand
- * - Auto-generate daily token
- * - Tampilkan history token (generated, used, expired)
- * - Copy-to-clipboard untuk token
- * 
  * ========================================================
  */
 
@@ -37,355 +16,308 @@ if (!in_array(current_user()['role'] ?? '', ['admin', 'kurikulum'])) {
 
 $setting = setting_akademik();
 
+// Bersihkan token yang sudah kedaluwarsa
+try {
+    db()->exec("DELETE FROM upload_token WHERE expires_at IS NOT NULL AND expires_at < NOW()");
+} catch (Exception $e) { /* ignore */ }
+
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     enforce_csrf('upload-token-management');
-    
+
     $action = strtolower(trim((string) ($_POST['action'] ?? '')));
 
-    // Handle toggle require_upload_token
     if ($action === 'toggle_require') {
-        $stmt = db()->query("SELECT require_upload_token FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
-        $current = $stmt->fetch();
-        $requireToken = ($current['require_upload_token'] ?? 0) == 1;
-        $newState = (int) !$requireToken;
-        
+        $row = db()->query("SELECT require_upload_token FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1")->fetch();
+        $newState = (int) !(($row['require_upload_token'] ?? 0) == 1);
         $stmt = db()->prepare("UPDATE pengaturan_akademik SET require_upload_token = ? WHERE is_aktif=1");
         $stmt->execute([$newState]);
-        
-        set_flash('success', $newState ? 'Token verifikasi DIAKTIFKAN.' : 'Token verifikasi DINONAKTIFKAN.');
+        set_flash('success', $newState ? 'Verifikasi token <strong>diaktifkan</strong>.' : 'Verifikasi token <strong>dinonaktifkan</strong>.');
         redirect('index.php?page=upload-token-management');
     }
 
-    // Handle change token mode
     if ($action === 'change_mode') {
         $newMode = strtolower(trim((string) ($_POST['mode'] ?? '')));
-        if (in_array($newMode, ['manual', 'daily', 'disabled'])) {
+        if (in_array($newMode, ['daily', 'manual'])) {
             $stmt = db()->prepare("UPDATE pengaturan_akademik SET token_mode = ? WHERE is_aktif=1");
             $stmt->execute([$newMode]);
-            
-            set_flash('success', "Mode token diubah ke: $newMode");
+            set_flash('success', 'Mode token diubah ke <strong>' . ($newMode === 'daily' ? 'Otomatis' : 'Manual') . '</strong>.');
             redirect('index.php?page=upload-token-management');
         }
     }
 
-    // Handle manual token generation
     if ($action === 'generate_manual') {
-        $token = generate_upload_token('manual', current_user()['username'] ?? 'system', 24);
-        if ($token) {
-            set_flash('success', "Token manual berhasil dibuat: $token");
-        } else {
-            set_flash('error', 'Gagal membuat token manual. Silakan coba lagi.');
+        $rawToken   = strtoupper(preg_replace('/[^A-Z0-9]/i', '', trim((string) ($_POST['token_value'] ?? ''))));
+        $hours      = max(1, min(720, (int) ($_POST['expiry_hours'] ?? 24)));
+        $tokenValue = $rawToken !== '' ? $rawToken : strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+
+        if (strlen($tokenValue) < 4 || strlen($tokenValue) > 20) {
+            set_flash('error', 'Token harus 4–20 karakter alfanumerik.');
+            redirect('index.php?page=upload-token-management');
         }
+
+        // Cek apakah token sudah aktif di periode ini
+        $check = db()->prepare("
+            SELECT id FROM upload_token
+            WHERE token = :tok
+            AND created_tahun_ajaran = :ta
+            AND created_semester_aktif = :sem
+            AND (expires_at IS NULL OR expires_at > NOW())
+            AND is_used = 0
+            LIMIT 1
+        ");
+        $check->execute(['tok' => $tokenValue, 'ta' => $setting['tahun_ajaran'], 'sem' => $setting['semester_aktif']]);
+        if ($check->fetch()) {
+            set_flash('error', 'Token tersebut sudah aktif. Gunakan nilai token yang berbeda.');
+            redirect('index.php?page=upload-token-management');
+        }
+
+        $expiresAt = date('Y-m-d H:i:s', time() + $hours * 3600);
+        $stmt = db()->prepare("
+            INSERT INTO upload_token (token, token_type, created_by, expires_at, created_tahun_ajaran, created_semester_aktif, ip_address, user_agent)
+            VALUES (:token, 'manual', :creator, :expires, :ta, :sem, :ip, :ua)
+        ");
+        $stmt->execute([
+            'token'   => $tokenValue,
+            'creator' => current_user()['username'] ?? 'system',
+            'expires' => $expiresAt,
+            'ta'      => $setting['tahun_ajaran'],
+            'sem'     => $setting['semester_aktif'],
+            'ip'      => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'ua'      => substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 255),
+        ]);
+        set_flash('success', "Token <strong>" . e($tokenValue) . "</strong> berhasil dibuat (berlaku $hours jam).");
         redirect('index.php?page=upload-token-management');
     }
 
-    // Handle auto-generate daily token
-    if ($action === 'generate_daily') {
-        // Revoke old daily token for today
-        $today = date('Y-m-d');
-        $stmt = db()->prepare("
-            UPDATE upload_token 
-            SET is_used = 1
-            WHERE created_tahun_ajaran = :ta
-            AND created_semester_aktif = :sem
-            AND token_type = 'daily'
-            AND DATE(created_at) = :today
-            AND is_used = 0
-        ");
-        $stmt->execute([
-            'ta' => $setting['tahun_ajaran'],
-            'sem' => $setting['semester_aktif'],
-            'today' => $today
-        ]);
-        
-        $token = generate_upload_token('daily', current_user()['username'] ?? 'system', 24);
-        if ($token) {
-            set_flash('success', "Token harian otomatis dibuat: $token (berlaku 24 jam)");
-        } else {
-            set_flash('error', 'Gagal membuat token harian. Silakan coba lagi.');
-        }
-        redirect('index.php?page=upload-token-management');
-    }
-    
-    // If no valid action, redirect
     redirect('index.php?page=upload-token-management');
 }
 
-// Get current settings for display
-$stmt = db()->query("SELECT require_upload_token, token_mode FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
-$tokenSetting = $stmt->fetch();
-$requireToken = $tokenSetting['require_upload_token'] == 1;
-$tokenMode = $tokenSetting['token_mode'] ?? 'daily';
+// Load settings
+$row = db()->query("SELECT require_upload_token, token_mode FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1")->fetch();
+$requireToken = ($row['require_upload_token'] ?? 0) == 1;
+$tokenMode    = in_array($row['token_mode'] ?? '', ['daily', 'manual']) ? $row['token_mode'] : 'daily';
 
-// Get current valid token
-$currentToken = get_current_upload_token();
-
-// Get token history
-$stmt = db()->prepare("
-    SELECT 
-        id, token, token_type, created_by, created_at, expires_at, 
-        is_used, used_by, used_at
-    FROM upload_token
+// Ambil token aktif beserta waktu kedaluwarsa
+$stmtToken = db()->prepare("
+    SELECT token, expires_at FROM upload_token
     WHERE created_tahun_ajaran = :ta
     AND created_semester_aktif = :sem
+    AND (expires_at IS NULL OR expires_at > NOW())
+    AND is_used = 0
     ORDER BY created_at DESC
-    LIMIT 20
+    LIMIT 1
 ");
-$stmt->execute([
-    'ta' => $setting['tahun_ajaran'],
-    'sem' => $setting['semester_aktif']
-]);
-$tokenHistory = $stmt->fetchAll();
+$stmtToken->execute(['ta' => $setting['tahun_ajaran'], 'sem' => $setting['semester_aktif']]);
+$activeTokenRow = $stmtToken->fetch() ?: null;
+
+// Mode otomatis: buat token harian jika belum ada
+if ($tokenMode === 'daily' && !$activeTokenRow) {
+    generate_upload_token('daily', current_user()['username'] ?? 'system', 24);
+    $stmtToken2 = db()->prepare("
+        SELECT token, expires_at FROM upload_token
+        WHERE created_tahun_ajaran = :ta
+        AND created_semester_aktif = :sem
+        AND (expires_at IS NULL OR expires_at > NOW())
+        AND is_used = 0
+        ORDER BY created_at DESC
+        LIMIT 1
+    ");
+    $stmtToken2->execute(['ta' => $setting['tahun_ajaran'], 'sem' => $setting['semester_aktif']]);
+    $activeTokenRow = $stmtToken2->fetch() ?: null;
+}
+
+$currentToken   = $activeTokenRow ? $activeTokenRow['token'] : null;
+$tokenExpiresAt = ($activeTokenRow && $activeTokenRow['expires_at']) ? $activeTokenRow['expires_at'] : null;
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pt-3">
-                <h3 class="mb-0">⚙️ Pengaturan Verifikasi Token</h3>
-            </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between mb-3 p-3 bg-light rounded">
-                    <div>
-                        <div class="fw-semibold">Status Verifikasi Token</div>
-                        <div class="small text-secondary">
-                            <?php if ($requireToken): ?>
-                                <span class="badge bg-success">AKTIF</span> - Token diperlukan untuk upload
-                            <?php else: ?>
-                                <span class="badge bg-secondary">NONAKTIF</span> - Token tidak diperlukan
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Konfirmasi" data-confirm-text="Ubah status verifikasi token?">
-                        <?= csrf_input() ?>
-                        <input type="hidden" name="action" value="toggle_require">
-                        <button type="submit" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>">
-                            <?= $requireToken ? 'NONAKTIFKAN' : 'AKTIFKAN' ?>
-                        </button>
-                    </form>
-                </div>
+<div class="card border-0 shadow-sm" style="max-width:580px;margin:0 auto;">
+    <div class="card-header bg-white border-bottom py-3">
+        <h5 class="mb-0 fw-semibold">Manajemen Token Upload</h5>
+    </div>
+    <div class="card-body p-4">
 
-                <div class="mb-3">
-                    <div class="fw-semibold mb-2">Mode Token</div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Ubah mode token ke Manual?">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="change_mode">
-                            <input type="hidden" name="mode" value="manual">
-                            <button type="submit" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'manual' ? 'active btn-primary' : '' ?>">
-                                🔧 Manual
-                            </button>
-                        </form>
-                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Ubah mode token ke Harian Otomatis?">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="change_mode">
-                            <input type="hidden" name="mode" value="daily">
-                            <button type="submit" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'daily' ? 'active btn-primary' : '' ?>">
-                                📅 Harian Otomatis
-                            </button>
-                        </form>
-                        <form method="post" style="display: inline;" class="confirm-form" data-confirm-title="Ubah Mode Token" data-confirm-text="Nonaktifkan mode token?">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="change_mode">
-                            <input type="hidden" name="mode" value="disabled">
-                            <button type="submit" class="btn btn-outline-danger btn-sm <?= $tokenMode === 'disabled' ? 'active btn-danger' : '' ?>">
-                                ❌ Disabled
-                            </button>
-                        </form>
-                    </div>
-                    <div class="small text-secondary mt-2">
-                        <?php if ($tokenMode === 'manual'): ?>
-                            Mode Manual: Anda dapat membuat token kapan saja sesuai kebutuhan.
-                        <?php elseif ($tokenMode === 'daily'): ?>
-                            Mode Harian: Sistem secara otomatis membuat token baru setiap hari.
-                        <?php else: ?>
-                            Mode Disabled: Tidak ada token yang digunakan.
-                        <?php endif; ?>
-                    </div>
+        <!-- Toggle Aktif / Nonaktif -->
+        <div class="d-flex align-items-center justify-content-between p-3 rounded bg-light mb-4">
+            <div>
+                <div class="fw-semibold">Verifikasi Token</div>
+                <div class="small mt-1">
+                    <?php if ($requireToken): ?>
+                        <span class="badge bg-success">AKTIF</span>
+                        <span class="text-secondary">– Token diperlukan untuk upload</span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary">NONAKTIF</span>
+                        <span class="text-secondary">– Upload tanpa token</span>
+                    <?php endif; ?>
                 </div>
+            </div>
+            <form method="post">
+                <?= csrf_input() ?>
+                <input type="hidden" name="action" value="toggle_require">
+                <button type="submit" class="btn btn-sm <?= $requireToken ? 'btn-outline-danger' : 'btn-outline-success' ?>">
+                    <?= $requireToken ? 'Nonaktifkan' : 'Aktifkan' ?>
+                </button>
+            </form>
+        </div>
+
+        <!-- Pilih Mode -->
+        <div class="mb-4">
+            <div class="fw-semibold mb-2">Mode Token</div>
+            <div class="d-flex gap-2">
+                <form method="post">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="change_mode">
+                    <input type="hidden" name="mode" value="daily">
+                    <button type="submit" class="btn btn-sm <?= $tokenMode === 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                        Otomatis
+                    </button>
+                </form>
+                <form method="post">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="change_mode">
+                    <input type="hidden" name="mode" value="manual">
+                    <button type="submit" class="btn btn-sm <?= $tokenMode === 'manual' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                        Manual
+                    </button>
+                </form>
+            </div>
+            <div class="small text-secondary mt-2">
+                <?php if ($tokenMode === 'daily'): ?>
+                    Mode Otomatis: token harian dibuat otomatis, berlaku 24 jam.
+                <?php else: ?>
+                    Mode Manual: buat token sendiri dengan nilai dan masa berlaku yang ditentukan.
+                <?php endif; ?>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pt-3">
-                <h3 class="mb-0">🔐 Token Saat Ini</h3>
-            </div>
-            <div class="card-body">
-                <?php if ($currentToken): ?>
-                    <div class="p-3 bg-light rounded mb-3 text-center">
-                        <div class="small text-secondary mb-2">Token Aktif</div>
-                        <div class="fs-5 font-monospace fw-bold mb-2"><?= e($currentToken) ?></div>
-                        <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('<?= e($currentToken) ?>')">
-                            📋 Copy Token
-                        </button>
-                    </div>
-                    <div class="small text-secondary text-center">
-                        Guru/Homeroom dapat menggunakan token ini untuk verifikasi upload.
-                    </div>
-                <?php else: ?>
-                    <div class="alert alert-info">
-                        <strong>✓ Belum ada token aktif</strong><br>
-                        Buat token baru menggunakan tombol di bawah ini.
+        <hr>
+
+        <!-- Tampilan Token -->
+        <?php if ($currentToken): ?>
+            <div class="text-center py-3">
+                <div class="small text-secondary mb-1">Token Aktif</div>
+                <div class="fs-2 font-monospace fw-bold mb-2" style="letter-spacing:.15em"><?= e($currentToken) ?></div>
+                <?php if ($tokenExpiresAt): ?>
+                    <div class="small text-secondary mb-3">
+                        Berakhir <?= e(date('d M Y, H:i', strtotime($tokenExpiresAt))) ?>
+                        &nbsp;·&nbsp;<span id="tokenCountdown" class="fw-semibold"></span>
                     </div>
                 <?php endif; ?>
+                <button class="btn btn-sm btn-outline-primary" onclick="copyToken('<?= e($currentToken) ?>')">
+                    <i class="bi bi-clipboard"></i> Salin Token
+                </button>
+            </div>
+        <?php else: ?>
+            <div class="text-center text-secondary py-4">
+                <i class="bi bi-shield-x fs-1 d-block mb-2 opacity-50"></i>
+                Tidak ada token aktif
+            </div>
+        <?php endif; ?>
 
-                <div class="mt-3 pt-3 border-top">
-                    <div class="d-grid gap-2">
-                        <?php if ($tokenMode !== 'disabled'): ?>
-                            <form method="post" class="confirm-form" data-confirm-title="Buat Token Manual" data-confirm-text="Apakah Anda yakin ingin membuat token manual baru?">
-                                <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="generate_manual">
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    + Buat Token Manual
-                                </button>
-                            </form>
-                        <?php endif; ?>
-                        <?php if ($tokenMode === 'daily' || $tokenMode === 'manual'): ?>
-                            <form method="post" class="confirm-form" data-confirm-title="Generate Token Harian" data-confirm-text="Apakah Anda yakin ingin generate token harian baru?">
-                                <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="generate_daily">
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    📅 Generate Token Harian
-                                </button>
-                            </form>
-                        <?php endif; ?>
+        <!-- Tombol Buat Token (mode manual saja) -->
+        <?php if ($tokenMode === 'manual'): ?>
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-primary btn-sm"
+                        data-bs-toggle="modal" data-bs-target="#modalBuatToken">
+                    <i class="bi bi-plus-lg"></i> Buat Token
+                </button>
+            </div>
+        <?php endif; ?>
+
+    </div>
+</div>
+
+<!-- Modal Buat Token Manual -->
+<div class="modal fade" id="modalBuatToken" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Buat Token Manual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <?= csrf_input() ?>
+                <input type="hidden" name="action" value="generate_manual">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Nilai Token
+                            <span class="text-secondary fw-normal small">(kosongkan untuk generate otomatis)</span>
+                        </label>
+                        <input type="text" name="token_value" class="form-control font-monospace text-uppercase"
+                               maxlength="20" placeholder="Contoh: ABCD1234"
+                               oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+                        <div class="form-text">4–20 karakter, huruf dan angka saja.</div>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold">Masa Berlaku</label>
+                        <select name="expiry_hours" class="form-select">
+                            <option value="1">1 Jam</option>
+                            <option value="6">6 Jam</option>
+                            <option value="12">12 Jam</option>
+                            <option value="24" selected>24 Jam (1 Hari)</option>
+                            <option value="48">2 Hari</option>
+                            <option value="72">3 Hari</option>
+                            <option value="168">1 Minggu</option>
+                        </select>
                     </div>
                 </div>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Buat Token</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm mt-3">
-    <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-0">📋 History Token</h3>
-    </div>
-    <div class="card-body">
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Token</th>
-                        <th>Type</th>
-                        <th>dibuat oleh</th>
-                        <th>Created At</th>
-                        <th>Status</th>
-                        <th>Expires</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($tokenHistory)): ?>
-                        <tr><td colspan="6" class="text-center text-secondary py-3">Belum ada history token</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($tokenHistory as $t): 
-                            $isExpired = $t['expires_at'] && strtotime($t['expires_at']) < time();
-                            $isUsed = $t['is_used'] == 1;
-                            if ($isExpired) {
-                                $status = '<span class="badge bg-secondary">Expired</span>';
-                            } elseif ($isUsed) {
-                                $status = '<span class="badge bg-info">Used</span>';
-                            } else {
-                                $status = '<span class="badge bg-success">Active</span>';
-                            }
-                        ?>
-                            <tr>
-                                <td><code><?= e($t['token']) ?></code></td>
-                                <td>
-                                    <?php if ($t['token_type'] === 'daily'): ?>
-                                        <span class="badge bg-primary">Harian</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-warning">Manual</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= e($t['created_by']) ?></td>
-                                <td><?= e(substr($t['created_at'], 0, 19)) ?></td>
-                                <td><?= $status ?></td>
-                                <td>
-                                    <?php if ($t['expires_at']): ?>
-                                        <?= e(substr($t['expires_at'], 0, 19)) ?>
-                                    <?php else: ?>
-                                        <span class="text-secondary">-</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<?php if ($tokenExpiresAt): ?>
+<script>
+(function () {
+    const expiresAt = <?= json_encode(strtotime($tokenExpiresAt) * 1000) ?>;
+    const el = document.getElementById('tokenCountdown');
+    if (!el) return;
+
+    function tick() {
+        const diff = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+        if (diff === 0) {
+            el.textContent = 'Token habis';
+            el.style.color = '#dc3545';
+            return;
+        }
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        el.textContent = (h ? h + 'j ' : '') + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 'd';
+        el.style.color = diff < 3600 ? '#fd7e14' : '#198754';
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+<?php endif; ?>
 
 <script>
-// SweetAlert confirmation for forms
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle all forms with confirmation
-    document.querySelectorAll('.confirm-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const title = this.dataset.confirmTitle || 'Konfirmasi';
-            const text = this.dataset.confirmText || 'Apakah Anda yakin?';
-            const formElement = this;
-            
-            Swal.fire({
-                title: title,
-                text: text,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Lanjutkan',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Submit form programmatically
-                    formElement.submit();
-                }
-            });
-        });
-    });
-});
-
-// Copy to clipboard with SweetAlert
-function copyToClipboard(text) {
+function copyToken(text) {
+    const ok = () => {
+        if (window.Swal) Swal.fire({ icon: 'success', title: 'Token disalin!', timer: 1200, showConfirmButton: false });
+    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: 'Token berhasil disalin ke clipboard',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            fallbackCopy(text);
-        });
+        navigator.clipboard.writeText(text).then(ok).catch(() => fallbackCopy(text, ok));
     } else {
-        fallbackCopy(text);
+        fallbackCopy(text, ok);
     }
 }
-
-function fallbackCopy(text) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
+function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
     document.execCommand('copy');
-    document.body.removeChild(textarea);
-    Swal.fire({
-        icon: 'success',
-        title: 'Berhasil!',
-        text: 'Token berhasil disalin ke clipboard',
-        timer: 1500,
-        showConfirmButton: false
-    });
+    document.body.removeChild(ta);
+    if (cb) cb();
 }
 </script>
 

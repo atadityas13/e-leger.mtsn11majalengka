@@ -41,6 +41,34 @@ require dirname(__DIR__) . '/partials/header.php';
 
 $setting = setting_akademik();
 $targetSemester = semester_upload_target($setting['semester_aktif']);
+$uploadTokenSetting = get_upload_token_setting();
+
+try {
+    db()->exec("DELETE FROM upload_token WHERE expires_at IS NOT NULL AND expires_at < NOW()");
+} catch (Exception $e) {
+}
+
+$activeTokenRow = null;
+if ($uploadTokenSetting['require_token']) {
+    $stmtToken = db()->prepare("\n        SELECT token, expires_at, token_type\n        FROM upload_token\n        WHERE created_tahun_ajaran = :ta\n        AND created_semester_aktif = :sem\n        AND (expires_at IS NULL OR expires_at > NOW())\n        AND is_used = 0\n        ORDER BY created_at DESC\n        LIMIT 1\n    ");
+    $stmtToken->execute([
+        'ta' => $setting['tahun_ajaran'],
+        'sem' => $setting['semester_aktif'],
+    ]);
+    $activeTokenRow = $stmtToken->fetch() ?: null;
+
+    if (($uploadTokenSetting['token_mode'] ?? 'daily') === 'daily' && !$activeTokenRow) {
+        generate_upload_token('daily', current_user()['username'] ?? 'system', 24);
+        $stmtToken->execute([
+            'ta' => $setting['tahun_ajaran'],
+            'sem' => $setting['semester_aktif'],
+        ]);
+        $activeTokenRow = $stmtToken->fetch() ?: null;
+    }
+}
+
+$dashboardToken = $activeTokenRow['token'] ?? null;
+$dashboardTokenExpiry = $activeTokenRow['expires_at'] ?? null;
 
 $stmt = db()->query("SELECT current_semester, COUNT(*) total FROM siswa WHERE status_siswa='Aktif' GROUP BY current_semester");
 $statsSemester = $stmt->fetchAll();
@@ -54,7 +82,7 @@ $nonaktif = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Tidak 
 $lulus = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Lulus'")->fetch()['c'] ?? 0;
 ?>
 <div class="row g-3 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="text-secondary small">Siswa Aktif</div>
@@ -62,7 +90,7 @@ $lulus = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Lulus'")-
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="text-secondary small">Tidak Melanjutkan</div>
@@ -70,11 +98,41 @@ $lulus = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Lulus'")-
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="text-secondary small">Lulus</div>
                 <div class="display-6 fw-semibold text-primary mb-0"><?= e((string) $lulus) ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-secondary small mb-2">Token Upload</div>
+                <?php if (!$uploadTokenSetting['require_token']): ?>
+                    <div class="fw-semibold text-secondary mb-1">Verifikasi nonaktif</div>
+                    <div class="small text-secondary">Upload tidak memerlukan token</div>
+                <?php elseif ($dashboardToken): ?>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="fs-5 fw-semibold font-monospace mb-0"><?= e($dashboardToken) ?></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="copyDashboardToken('<?= e($dashboardToken) ?>')" aria-label="Salin token">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <div class="small text-secondary">
+                        Masa berlaku
+                        <?php if ($dashboardTokenExpiry): ?>
+                            <br><?= e(date('d M Y H:i', strtotime($dashboardTokenExpiry))) ?>
+                            <br><span id="dashboardTokenCountdown" class="fw-semibold"></span>
+                        <?php else: ?>
+                            <br>Tidak dibatasi
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="fw-semibold text-secondary mb-1">Token belum tersedia</div>
+                    <div class="small text-secondary">Buat token manual di menu manajemen token</div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -116,4 +174,98 @@ $lulus = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Lulus'")-
         </div>
     </div>
 </div>
+<?php if ($dashboardToken && $dashboardTokenExpiry): ?>
+<script>
+(function () {
+    const expiresAt = <?= json_encode(strtotime($dashboardTokenExpiry) * 1000) ?>;
+    const countdownNode = document.getElementById('dashboardTokenCountdown');
+    if (!countdownNode) {
+        return;
+    }
+
+    function renderCountdown() {
+        const diff = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+        if (diff === 0) {
+            countdownNode.textContent = 'Token belum tersedia';
+            countdownNode.classList.add('text-danger');
+            return;
+        }
+
+        const hours = Math.floor(diff / 3600);
+        const minutes = Math.floor((diff % 3600) / 60);
+        const seconds = diff % 60;
+        countdownNode.textContent = (hours ? hours + 'j ' : '') + String(minutes).padStart(2, '0') + 'm ' + String(seconds).padStart(2, '0') + 'd';
+    }
+
+    renderCountdown();
+    setInterval(renderCountdown, 1000);
+})();
+
+function copyDashboardToken(text) {
+    const afterCopy = () => {
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Token disalin',
+                timer: 1200,
+                showConfirmButton: false
+            });
+        }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(afterCopy).catch(() => fallbackCopyDashboardToken(text, afterCopy));
+        return;
+    }
+
+    fallbackCopyDashboardToken(text, afterCopy);
+}
+
+function fallbackCopyDashboardToken(text, callback) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (callback) {
+        callback();
+    }
+}
+</script>
+<?php elseif ($dashboardToken): ?>
+<script>
+function copyDashboardToken(text) {
+    const afterCopy = () => {
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Token disalin',
+                timer: 1200,
+                showConfirmButton: false
+            });
+        }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(afterCopy).catch(() => fallbackCopyDashboardToken(text, afterCopy));
+        return;
+    }
+
+    fallbackCopyDashboardToken(text, afterCopy);
+}
+
+function fallbackCopyDashboardToken(text, callback) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (callback) {
+        callback();
+    }
+}
+</script>
+<?php endif; ?>
 <?php require dirname(__DIR__) . '/partials/footer.php';
