@@ -1128,11 +1128,11 @@ if (count($nisnListMonitor) > 0) {
 
         $placeholders = implode(',', array_fill(0, count($chunk), '?'));
         if ($monitorSemester === 'UAM') {
-            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_uam WHERE nisn IN ({$placeholders}) GROUP BY nisn";
+            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_uam WHERE nisn IN ($placeholders) GROUP BY nisn";
             $stCount = db()->prepare($sqlCount);
             $stCount->execute($chunk);
         } else {
-            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_rapor WHERE semester = ? AND tahun_ajaran = ? AND nisn IN ({$placeholders}) GROUP BY nisn";
+            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_rapor WHERE semester = ? AND tahun_ajaran = ? AND nisn IN ($placeholders) GROUP BY nisn";
             $stCount = db()->prepare($sqlCount);
             $params = array_merge([(int) $monitorSemester, (string) $setting['tahun_ajaran']], $chunk);
             $stCount->execute($params);
@@ -1521,13 +1521,15 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <form method="post" id="bulkKosongkanForm" data-confirm="Yakin ingin mengosongkan nilai untuk semua siswa yang dipilih pada semester ini?" data-confirm-title="Konfirmasi Kosongkan Nilai Massal">
             <?= csrf_input() ?>
-            <input type="hidden" name="action" id="bulkActionType" value="kosongkan_nilai_massal">
+            <input type="hidden" name="action" value="kosongkan_nilai_massal">
             <input type="hidden" name="semester_target" value="<?= e($monitorSemester) ?>">
+
             <div class="d-flex justify-content-start mb-2">
                 <button type="submit" id="bulkClearSelectedBtn" class="btn btn-sm btn-danger d-none" title="Aksi Massal" style="min-width: 160px; text-align: left;">
                     Kosongkan Nilai
                 </button>
             </div>
+
             <div class="table-wrap">
                 <table>
                 <thead>
@@ -1557,7 +1559,11 @@ require dirname(__DIR__) . '/partials/header.php';
                     <?php $noCounter = $monitorOffset + 1; foreach ($rowsMonitorPaginated as $row): ?>
                         <tr>
                             <td class="text-center">
-                                <input type="checkbox" class="form-check-input row-select-checkbox d-none" name="selected_nisn[]" value="<?= e($row['nisn']) ?>" title="Pilih siswa">
+                                <?php if ($row['uploaded']): ?>
+                                    <input type="checkbox" class="form-check-input row-select-checkbox d-none" name="selected_nisn[]" value="<?= e($row['nisn']) ?>" title="Pilih siswa">
+                                <?php else: ?>
+                                    <input type="checkbox" class="form-check-input row-select-checkbox d-none" disabled title="Tidak ada nilai untuk dikosongkan">
+                                <?php endif; ?>
                             </td>
                             <td><?= e((string) $noCounter++) ?></td>
                             <td><?= e($row['nisn']) ?></td>
@@ -1623,7 +1629,9 @@ require dirname(__DIR__) . '/partials/header.php';
                 if (!toggleBtn || !selectAll || rowChecks.length === 0 || !bulkBtn) {
                     return;
                 }
+
                 let bulkMode = false;
+
                 function updateBulkButtonState() {
                     let checkedCount = 0;
                     let kosongCount = 0;
@@ -1631,7 +1639,8 @@ require dirname(__DIR__) . '/partials/header.php';
                     rowChecks.forEach((cb) => {
                         if (cb.checked) {
                             checkedCount++;
-                            if (cb.closest('tr').querySelector('.badge.text-bg-success')) {
+                            // Check if this row has nilai (uploaded)
+                            if (!cb.disabled) {
                                 nilaiCount++;
                             } else {
                                 kosongCount++;
@@ -1639,21 +1648,20 @@ require dirname(__DIR__) . '/partials/header.php';
                         }
                     });
                     bulkBtn.classList.toggle('d-none', checkedCount === 0);
-                    const actionType = document.getElementById('bulkActionType');
+                    // If all selected are kosong (disabled), show Non-aktifkan
+                    // If all selected are nilai (enabled), show Kosongkan Nilai
+                    // If mixed, show "Aksi Massal"
                     if (checkedCount === 0) {
                         bulkBtn.textContent = 'Aksi Massal';
-                        actionType.value = '';
                     } else if (nilaiCount > 0 && kosongCount === 0) {
                         bulkBtn.textContent = 'Kosongkan Nilai';
-                        actionType.value = 'kosongkan_nilai_massal';
                     } else if (kosongCount > 0 && nilaiCount === 0) {
                         bulkBtn.textContent = 'Non-aktifkan';
-                        actionType.value = 'nonaktifkan_siswa_massal';
                     } else {
                         bulkBtn.textContent = 'Aksi Massal';
-                        actionType.value = '';
                     }
                 }
+
                 function resetSelections() {
                     selectAll.checked = false;
                     rowChecks.forEach((cb) => {
@@ -1661,6 +1669,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     });
                     updateBulkButtonState();
                 }
+
                 toggleBtn.addEventListener('click', function () {
                     bulkMode = !bulkMode;
                     selectAll.classList.toggle('d-none', !bulkMode);
@@ -1674,12 +1683,14 @@ require dirname(__DIR__) . '/partials/header.php';
                         resetSelections();
                     }
                 });
+
                 selectAll.addEventListener('change', function () {
                     rowChecks.forEach((cb) => {
                         cb.checked = selectAll.checked;
                     });
                     updateBulkButtonState();
                 });
+
                 rowChecks.forEach((cb) => {
                     cb.addEventListener('change', function () {
                         let allChecked = true;
