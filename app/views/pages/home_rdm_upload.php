@@ -774,6 +774,97 @@ if (!is_array($homePreview) || !is_array($homePreview['entries'] ?? null) || !is
     $homePreview = null;
 }
 
+$homePreviewStudentList = [];
+if ($homePreview) {
+    $previewEntries = is_array($homePreview['entries'] ?? null) ? $homePreview['entries'] : [];
+    $nisnListPreview = [];
+    $mapelIdsPreview = [];
+
+    foreach ($previewEntries as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $nisn = (string) ($entry['nisn'] ?? '');
+        if ($nisn !== '') {
+            $nisnListPreview[$nisn] = $nisn;
+        }
+
+        $mapelId = (int) ($entry['mapel_id'] ?? 0);
+        if ($mapelId > 0) {
+            $mapelIdsPreview[$mapelId] = $mapelId;
+        }
+    }
+
+    $siswaByNisn = [];
+    if (count($nisnListPreview) > 0) {
+        $placeholders = implode(',', array_fill(0, count($nisnListPreview), '?'));
+        $sql = "SELECT nisn, nama, kelas FROM siswa WHERE nisn IN ({$placeholders})";
+        $stSiswaPreview = db()->prepare($sql);
+        $stSiswaPreview->execute(array_values($nisnListPreview));
+
+        foreach ($stSiswaPreview->fetchAll() as $siswaRow) {
+            $siswaByNisn[(string) ($siswaRow['nisn'] ?? '')] = [
+                'nama' => (string) ($siswaRow['nama'] ?? ''),
+                'kelas' => (string) ($siswaRow['kelas'] ?? ''),
+            ];
+        }
+    }
+
+    $mapelNameById = [];
+    if (count($mapelIdsPreview) > 0) {
+        $placeholdersMapel = implode(',', array_fill(0, count($mapelIdsPreview), '?'));
+        $sqlMapel = "SELECT id, nama_mapel FROM mapel WHERE id IN ({$placeholdersMapel})";
+        $stMapelPreview = db()->prepare($sqlMapel);
+        $stMapelPreview->execute(array_values($mapelIdsPreview));
+
+        foreach ($stMapelPreview->fetchAll() as $mapelRow) {
+            $mapelNameById[(int) ($mapelRow['id'] ?? 0)] = (string) ($mapelRow['nama_mapel'] ?? '');
+        }
+    }
+
+    $previewByStudent = [];
+    foreach ($previewEntries as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $nisn = (string) ($entry['nisn'] ?? '');
+        if ($nisn === '') {
+            continue;
+        }
+
+        if (!isset($previewByStudent[$nisn])) {
+            $studentMeta = $siswaByNisn[$nisn] ?? ['nama' => '', 'kelas' => ''];
+            $previewByStudent[$nisn] = [
+                'nisn' => $nisn,
+                'nama' => (string) ($studentMeta['nama'] ?? ''),
+                'kelas' => (string) ($studentMeta['kelas'] ?? ''),
+                'semester' => (int) ($entry['semester'] ?? 0),
+                'details' => [],
+            ];
+        }
+
+        $mapelId = (int) ($entry['mapel_id'] ?? 0);
+        $previewByStudent[$nisn]['details'][] = [
+            'mapel' => (string) ($mapelNameById[$mapelId] ?? ('Mapel #' . $mapelId)),
+            'nilai_baru' => (float) ($entry['nilai_baru'] ?? 0),
+        ];
+    }
+
+    $homePreviewStudentList = array_values($previewByStudent);
+    usort($homePreviewStudentList, static function (array $a, array $b): int {
+        $nameA = strtoupper((string) ($a['nama'] ?? ''));
+        $nameB = strtoupper((string) ($b['nama'] ?? ''));
+
+        if ($nameA === $nameB) {
+            return strcmp((string) ($a['nisn'] ?? ''), (string) ($b['nisn'] ?? ''));
+        }
+
+        return strcmp($nameA, $nameB);
+    });
+}
+
 $isLoggedIn = current_user() !== null;
 ?>
 <!doctype html>
@@ -958,7 +1049,79 @@ $isLoggedIn = current_user() !== null;
 
                             <form method="post" class="row g-2">
                                 <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="confirm_upload">>
+                                <input type="hidden" name="action" value="confirm_upload">
+
+                                <?php if (count($homePreviewStudentList) > 0): ?>
+                                    <div class="col-12">
+                                        <div class="table-wrap border rounded-3 bg-white">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                <tr>
+                                                    <th style="width: 50px;">No</th>
+                                                    <th>NISN</th>
+                                                    <th>Nama</th>
+                                                    <th>Kelas</th>
+                                                    <th>Semester</th>
+                                                    <th>Total Mapel</th>
+                                                    <th>Aksi</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                <?php $previewNo = 1; foreach ($homePreviewStudentList as $studentPreview): ?>
+                                                    <?php $modalId = 'modalHomePreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
+                                                    <tr>
+                                                        <td><?= e((string) $previewNo++) ?></td>
+                                                        <td><?= e((string) ($studentPreview['nisn'] ?? '-')) ?></td>
+                                                        <td><?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?></td>
+                                                        <td><?= e((string) (($studentPreview['kelas'] ?? '') !== '' ? $studentPreview['kelas'] : '-')) ?></td>
+                                                        <td><?= e((string) ((int) ($studentPreview['semester'] ?? 0) > 0 ? (int) $studentPreview['semester'] : '-')) ?></td>
+                                                        <td><?= e((string) count($studentPreview['details'] ?? [])) ?></td>
+                                                        <td>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= e($modalId) ?>">Lihat Nilai</button>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <?php foreach ($homePreviewStudentList as $studentPreview): ?>
+                                        <?php $modalId = 'modalHomePreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
+                                        <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                                                <div class="modal-content border-0 shadow">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Detail Nilai - <?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?> (<?= e((string) ($studentPreview['nisn'] ?? '-')) ?>)</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="table-wrap">
+                                                            <table class="table table-sm align-middle mb-0">
+                                                                <thead>
+                                                                <tr>
+                                                                    <th style="width: 50px;">No</th>
+                                                                    <th>Mapel</th>
+                                                                    <th>Nilai Baru</th>
+                                                                </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                <?php $detailNo = 1; foreach (($studentPreview['details'] ?? []) as $detail): ?>
+                                                                    <tr>
+                                                                        <td><?= e((string) $detailNo++) ?></td>
+                                                                        <td><?= e((string) ($detail['mapel'] ?? '-')) ?></td>
+                                                                        <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
+                                                                    </tr>
+                                                                <?php endforeach; ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
 
                                 <!-- Admin Upload Token (if required) -->
                                 <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
