@@ -1524,8 +1524,8 @@ require dirname(__DIR__) . '/partials/header.php';
             <input type="hidden" name="action" value="kosongkan_nilai_massal">
             <input type="hidden" name="semester_target" value="<?= e($monitorSemester) ?>">
 
-            <div class="d-flex justify-content-end mb-2">
-                <button type="submit" id="bulkClearSelectedBtn" class="btn btn-sm btn-danger d-none" title="Kosongkan Nilai Terpilih">
+            <div class="d-flex justify-content-start mb-2">
+                <button type="submit" id="bulkClearSelectedBtn" class="btn btn-sm btn-danger d-none" title="Aksi Massal" style="min-width: 160px; text-align: left;">
                     Kosongkan Nilai
                 </button>
             </div>
@@ -1555,10 +1555,15 @@ require dirname(__DIR__) . '/partials/header.php';
                         <td colspan="11" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
                     </tr>
                 <?php else: ?>
+                    <?php $nonaktifRows = []; ?>
                     <?php $noCounter = $monitorOffset + 1; foreach ($rowsMonitorPaginated as $row): ?>
                         <tr>
                             <td class="text-center">
-                                <input type="checkbox" class="form-check-input row-select-checkbox d-none" name="selected_nisn[]" value="<?= e($row['nisn']) ?>" title="Pilih siswa">
+                                <?php if ($row['uploaded']): ?>
+                                    <input type="checkbox" class="form-check-input row-select-checkbox d-none" name="selected_nisn[]" value="<?= e($row['nisn']) ?>" title="Pilih siswa">
+                                <?php else: ?>
+                                    <input type="checkbox" class="form-check-input row-select-checkbox d-none" disabled title="Tidak ada nilai untuk dikosongkan">
+                                <?php endif; ?>
                             </td>
                             <td><?= e((string) $noCounter++) ?></td>
                             <td><?= e($row['nisn']) ?></td>
@@ -1591,14 +1596,10 @@ require dirname(__DIR__) . '/partials/header.php';
                                         </form>
                                     </div>
                                 <?php else: ?>
-                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="if(confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.')) document.getElementById('formNonaktif<?= e($row['nisn']) ?>').submit();" title="Nonaktifkan">
+                                    <?php $nonaktifRows[] = ['nisn' => (string) $row['nisn'], 'nama' => (string) $row['nama']]; ?>
+                                    <button type="submit" form="formNonaktif<?= e($row['nisn']) ?>" class="btn btn-sm btn-outline-warning" title="Nonaktifkan" onclick="return confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.');">
                                         <i class="bi bi-x-circle"></i>
                                     </button>
-                                    <form id="formNonaktif<?= e($row['nisn']) ?>" method="post" class="d-none">
-                                        <?= csrf_input() ?>
-                                        <input type="hidden" name="action" value="nonaktifkan_siswa">
-                                        <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
-                                    </form>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -1608,6 +1609,16 @@ require dirname(__DIR__) . '/partials/header.php';
                 </table>
             </div>
         </form>
+
+        <?php if (!empty($nonaktifRows ?? [])): ?>
+            <?php foreach ($nonaktifRows as $nonaktifRow): ?>
+                <form id="formNonaktif<?= e($nonaktifRow['nisn']) ?>" method="post" class="d-none">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="nonaktifkan_siswa">
+                    <input type="hidden" name="nisn" value="<?= e($nonaktifRow['nisn']) ?>">
+                </form>
+            <?php endforeach; ?>
+        <?php endif; ?>
 
         <script>
             (function () {
@@ -1623,12 +1634,32 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 function updateBulkButtonState() {
                     let checkedCount = 0;
+                    let kosongCount = 0;
+                    let nilaiCount = 0;
                     rowChecks.forEach((cb) => {
                         if (cb.checked) {
                             checkedCount++;
+                            // Check if this row has nilai (uploaded)
+                            if (!cb.disabled) {
+                                nilaiCount++;
+                            } else {
+                                kosongCount++;
+                            }
                         }
                     });
                     bulkBtn.classList.toggle('d-none', checkedCount === 0);
+                    // If all selected are kosong (disabled), show Non-aktifkan
+                    // If all selected are nilai (enabled), show Kosongkan Nilai
+                    // If mixed, show "Aksi Massal"
+                    if (checkedCount === 0) {
+                        bulkBtn.textContent = 'Aksi Massal';
+                    } else if (nilaiCount > 0 && kosongCount === 0) {
+                        bulkBtn.textContent = 'Kosongkan Nilai';
+                    } else if (kosongCount > 0 && nilaiCount === 0) {
+                        bulkBtn.textContent = 'Non-aktifkan';
+                    } else {
+                        bulkBtn.textContent = 'Aksi Massal';
+                    }
                 }
 
                 function resetSelections() {
