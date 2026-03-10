@@ -12,10 +12,10 @@ $targetRapor = semester_upload_target($semesterAktif);
 $targetSemesterLabel = implode(', ', array_map('strval', $targetRapor));
 $flash = get_flash();
 $homePreviewSessionKey = 'home_rdm_preview';
+$homeResultSessionKey = 'home_rdm_upload_result';
 $tokenSetting = get_upload_token_setting();
 $requireUploadToken = $tokenSetting['require_token'];
 $tokenMode = $tokenSetting['token_mode'];
-$currentUploadToken = $requireUploadToken && $tokenMode !== 'disabled' ? get_current_upload_token() : null;
 
 if (!function_exists('rdm_normalize_header')) {
     function rdm_normalize_header(string $value): string
@@ -428,7 +428,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         db()->beginTransaction();
         try {
-            $updatedSiswaCount = 0;
             $stUpdateSiswa = db()->prepare('UPDATE siswa
                 SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
                     nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
@@ -455,12 +454,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'absen_set' => $absenSet,
                     'nomor_absen' => $absenSet === 1 ? (int) $updateData['nomor_absen'] : 0,
                 ]);
-                $updatedSiswaCount++;
             }
 
             $countProcessed = 0;
-            $countInserted = 0;
-            $countUpdated = 0;
             foreach ($preview['entries'] as $entry) {
                 if (!is_array($entry)) {
                     continue;
@@ -473,12 +469,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ta' => (string) $setting['tahun_ajaran'],
                     'nilai' => (float) ($entry['nilai_baru'] ?? 0),
                 ]);
-
-                if ($stInsertRapor->rowCount() === 1) {
-                    $countInserted++;
-                } else {
-                    $countUpdated++;
-                }
                 $countProcessed++;
             }
 
@@ -489,15 +479,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $adminTokenInput = strtoupper(trim((string) ($_POST['admin_upload_token'] ?? '')));
                 mark_upload_token_used($adminTokenInput, current_user()['username'] ?? 'unknown');
             }
+
+            $uploadedNisn = array_values(array_unique(array_filter(array_map(static function ($row) {
+                return (string) ($row['nisn'] ?? '');
+            }, $preview['entries']), static function ($nisn) {
+                return $nisn !== '';
+            })));
+
+            $uploadedClassList = [];
+            if (count($uploadedNisn) > 0) {
+                $placeholdersUploaded = implode(',', array_fill(0, count($uploadedNisn), '?'));
+                $sqlUploadedClass = "SELECT kelas FROM siswa WHERE nisn IN ({$placeholdersUploaded})";
+                $stUploadedClass = db()->prepare($sqlUploadedClass);
+                $stUploadedClass->execute($uploadedNisn);
+
+                foreach ($stUploadedClass->fetchAll() as $classRow) {
+                    $kelas = trim((string) ($classRow['kelas'] ?? ''));
+                    if ($kelas !== '') {
+                        $uploadedClassList[$kelas] = $kelas;
+                    }
+                }
+            }
+
+            $_SESSION[$homeResultSessionKey] = [
+                'kelas' => array_values($uploadedClassList),
+                'jumlah_siswa' => count($uploadedNisn),
+                'jumlah_nilai' => $countProcessed,
+                'waktu_upload' => date('Y-m-d H:i:s'),
+            ];
             
             unset($_SESSION[$homePreviewSessionKey]);
-            set_flash('success', 'Konfirmasi upload berhasil. Diproses: ' . $countProcessed . ' nilai (insert: ' . $countInserted . ', update: ' . $countUpdated . '), data siswa diperbarui: ' . $updatedSiswaCount . '.');
         } catch (Throwable $e) {
             db()->rollBack();
             set_flash('error', 'Konfirmasi upload gagal: ' . $e->getMessage());
         }
 
-        redirect('index.php?page=home');
+        redirect('index.php?page=home&upload_result=success');
     }
 
     if ($action !== 'preview_upload') {
@@ -774,6 +791,17 @@ if (!is_array($homePreview) || !is_array($homePreview['entries'] ?? null) || !is
     $homePreview = null;
 }
 
+$homeUploadResult = null;
+if (($_GET['upload_result'] ?? '') === 'success') {
+    $resultData = $_SESSION[$homeResultSessionKey] ?? null;
+    if (is_array($resultData)) {
+        $homeUploadResult = $resultData;
+        unset($_SESSION[$homeResultSessionKey]);
+    }
+}
+
+$showUploadFormArea = !$homePreview && !$homeUploadResult;
+
 $homePreviewStudentList = [];
 if ($homePreview) {
     $previewEntries = is_array($homePreview['entries'] ?? null) ? $homePreview['entries'] : [];
@@ -969,6 +997,7 @@ $isLoggedIn = current_user() !== null;
             </div>
         </section>
 
+        <?php if ($showUploadFormArea): ?>
         <div class="row g-3 align-items-stretch mb-3 landing-reveal" style="--reveal-delay: 120ms;">
             <div class="col-lg-7">
                 <section class="landing-upload card border-0 shadow-sm h-100">
@@ -979,15 +1008,6 @@ $isLoggedIn = current_user() !== null;
                             <span><i class="bi bi-123"></i> Nilai: 70-100</span>
                             <span><i class="bi bi-key"></i> Token: <?= $requireUploadToken && $tokenMode !== 'disabled' ? 'Aktif' : 'Nonaktif' ?></span>
                         </div>
-
-                        <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
-                            <div class="alert alert-warning border-0 py-2 px-3 mb-3" role="alert">
-                                <div class="small mb-0">
-                                    <strong>Verifikasi token aktif.</strong>
-                                    <?= $currentUploadToken ? ' Token saat ini tersedia dan dapat digunakan saat konfirmasi.' : ' Silakan minta token ke admin/kurikulum sebelum konfirmasi.' ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
 
                         <form id="rdmUploadForm" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
                             <?= csrf_input() ?>
@@ -1061,7 +1081,9 @@ $isLoggedIn = current_user() !== null;
                 </section>
             </div>
         </div>
+        <?php endif; ?>
 
+        <?php if ($showUploadFormArea): ?>
         <section id="uploadProgressArea" class="upload-progress-area mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" aria-live="polite">
             <div class="upload-progress-head">
                 <div>
@@ -1079,6 +1101,71 @@ $isLoggedIn = current_user() !== null;
                 <span id="stepSave"><i class="bi bi-database-check"></i> Simpan nilai</span>
             </div>
         </section>
+        <?php endif; ?>
+
+        <?php if ($homeUploadResult): ?>
+            <div class="row justify-content-center mb-3 landing-reveal" style="--reveal-delay: 180ms;">
+                <div class="col-xl-9 col-lg-10">
+                    <section class="card border-0 shadow-sm bg-success-subtle">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="alert alert-success border-0 flex-grow-1 mb-0">
+                                    <div class="fw-semibold mb-1"><i class="bi bi-check2-circle me-2"></i>Selamat, upload berhasil</div>
+                                    <div class="small">Nilai sudah terkirim. Terima kasih telah mengupload nilai.</div>
+                                </div>
+                            </div>
+
+                            <div class="table-wrap border rounded-3 bg-white">
+                                <table class="table table-sm align-middle mb-0">
+                                    <tbody>
+                                    <tr>
+                                        <th style="width: 240px;">Kelas Terupload</th>
+                                        <td>
+                                            <?php
+                                            $kelasText = '-';
+                                            if (is_array($homeUploadResult['kelas'] ?? null) && count($homeUploadResult['kelas']) > 0) {
+                                                $kelasText = implode(', ', array_map('strval', $homeUploadResult['kelas']));
+                                            }
+                                            ?>
+                                            <?= e($kelasText) ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Jumlah Siswa Terupload</th>
+                                        <td><?= e((string) ((int) ($homeUploadResult['jumlah_siswa'] ?? 0))) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Jumlah Nilai Terupload</th>
+                                        <td><?= e((string) ((int) ($homeUploadResult['jumlah_nilai'] ?? 0))) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Waktu Upload</th>
+                                        <td>
+                                            <?php
+                                            $uploadTime = (string) ($homeUploadResult['waktu_upload'] ?? '');
+                                            $uploadTimeText = $uploadTime !== '' ? date('d M Y H:i:s', strtotime($uploadTime)) : '-';
+                                            ?>
+                                            <?= e($uploadTimeText) ?>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="alert alert-warning border-0 mt-3 mb-0 small">
+                                Jika ada kesalahan nilai yang terupload, silakan menghubungi admin/kurikulum untuk perbaikan nilai.
+                            </div>
+
+                            <div class="d-grid mt-3">
+                                <a href="index.php?page=home" class="btn btn-success">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Upload File Lagi
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <!-- PREVIEW & CONFIRMATION SECTION (Only show if preview exists) -->
         <?php if ($homePreview): ?>
@@ -1141,29 +1228,23 @@ $isLoggedIn = current_user() !== null;
                                 <!-- Admin Upload Token (if required) -->
                                 <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
                                     <div class="col-12">
-                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmasi dari Admin/Kurikulum</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" 
-                                                   placeholder="<?= $currentUploadToken ? e($currentUploadToken) : 'Hubungi admin untuk membuat token' ?>" 
-                                                   maxlength="12" required>
-                                            <?php if ($currentUploadToken): ?>
-                                                <button class="btn btn-outline-secondary" type="button" onclick="copyAdminToken()">
-                                                    <i class="bi bi-clipboard me-1"></i> Copy
-                                                </button>
-                                            <?php endif; ?>
+                                        <div class="alert alert-warning border-0 py-2 px-3 mb-0" role="alert">
+                                            <div class="small mb-0">
+                                                <strong>Verifikasi token aktif.</strong> Silakan input token dari admin/kurikulum untuk konfirmasi simpan.
+                                            </div>
                                         </div>
-                                        <?php if ($currentUploadToken): ?>
-                                            <div class="form-text text-success mt-2"><i class="bi bi-check-circle me-1"></i>Token tersedia: <strong><?= e($currentUploadToken) ?></strong></div>
-                                        <?php else: ?>
-                                            <div class="form-text text-danger mt-2"><i class="bi bi-exclamation-triangle me-1"></i><a href="index.php?page=upload-token-management" target="_blank" class="link-danger">Admin: Buat token di sini</a></div>
-                                        <?php endif; ?>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmasi dari Admin/Kurikulum</label>
+                                        <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="Masukkan 6 digit token" inputmode="numeric" maxlength="6" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)" required>
+                                        <div class="form-text mt-2">Token tidak ditampilkan di halaman ini. Minta token ke admin/kurikulum.</div>
                                     </div>
                                 <?php else: ?>
                                     <!-- Token tidak diaktifkan -->
                                 <?php endif; ?>
 
                                 <div class="col-12 d-grid gap-2 pt-2">
-                                    <button type="submit" class="btn btn-success btn-lg fw-semibold <?= !($requireUploadToken && $tokenMode !== 'disabled') || $currentUploadToken ? '' : 'disabled' ?>" <?= !($requireUploadToken && $tokenMode !== 'disabled') || $currentUploadToken ? '' : 'disabled' ?>>
+                                    <button type="submit" class="btn btn-success btn-lg fw-semibold">
                                         <i class="bi bi-check2-circle me-2"></i> Konfirmasi Simpan
                                     </button>
                                 </div>
@@ -1446,23 +1527,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-function copyAdminToken() {
-    var tokenInput = document.getElementById('admin_upload_token');
-    if (tokenInput && tokenInput.placeholder) {
-        var token = tokenInput.placeholder;
-        navigator.clipboard.writeText(token).then(function() {
-            alert('Token berhasil dicopy: ' + token);
-            tokenInput.value = token;
-            tokenInput.focus();
-        }).catch(function() {
-            // Fallback untuk browser lama
-            tokenInput.value = token;
-            tokenInput.select();
-            document.execCommand('copy');
-            alert('Token berhasil dicopy: ' + token);
-        });
-    }
-}
 </script>
 </body>
 </html>

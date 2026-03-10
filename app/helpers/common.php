@@ -370,9 +370,35 @@ if (!function_exists('generate_upload_token')) {
             $setting = setting_akademik();
             $currentUser = current_user();
             $creator = $created_by ?? ($currentUser['username'] ?? 'system');
-            
-            // Generate random token (8 chars alphanumeric)
-            $token = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+
+            $checkStmt = db()->prepare("
+                SELECT id FROM upload_token
+                WHERE token = :token
+                AND created_tahun_ajaran = :ta
+                AND created_semester_aktif = :sem
+                AND (expires_at IS NULL OR expires_at > NOW())
+                AND is_used = 0
+                LIMIT 1
+            ");
+
+            $token = null;
+            for ($attempt = 0; $attempt < 10; $attempt++) {
+                $candidate = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $checkStmt->execute([
+                    'token' => $candidate,
+                    'ta' => $setting['tahun_ajaran'],
+                    'sem' => $setting['semester_aktif']
+                ]);
+
+                if (!$checkStmt->fetch()) {
+                    $token = $candidate;
+                    break;
+                }
+            }
+
+            if ($token === null) {
+                return false;
+            }
             
             $expiresAt = $expiry_hours > 0 ? date('Y-m-d H:i:s', time() + ($expiry_hours * 3600)) : null;
             

@@ -47,16 +47,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'generate_manual') {
-        $rawToken   = strtoupper(preg_replace('/[^A-Z0-9]/i', '', trim((string) ($_POST['token_value'] ?? ''))));
-        $hours      = max(1, min(720, (int) ($_POST['expiry_hours'] ?? 24)));
-        $tokenValue = $rawToken !== '' ? $rawToken : strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        $rawToken = preg_replace('/\D/', '', trim((string) ($_POST['token_value'] ?? '')));
+        $hours = max(1, min(720, (int) ($_POST['expiry_hours'] ?? 24)));
+        $tokenValue = $rawToken !== '' ? $rawToken : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        if (strlen($tokenValue) < 4 || strlen($tokenValue) > 20) {
-            set_flash('error', 'Token harus 4–20 karakter alfanumerik.');
+        if (!preg_match('/^\d{6}$/', $tokenValue)) {
+            set_flash('error', 'Token harus tepat 6 digit angka.');
             redirect('index.php?page=upload-token-management');
         }
 
-        // Cek apakah token sudah aktif di periode ini
         $check = db()->prepare("
             SELECT id FROM upload_token
             WHERE token = :tok
@@ -66,9 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             AND is_used = 0
             LIMIT 1
         ");
-        $check->execute(['tok' => $tokenValue, 'ta' => $setting['tahun_ajaran'], 'sem' => $setting['semester_aktif']]);
+        $check->execute([
+            'tok' => $tokenValue,
+            'ta' => $setting['tahun_ajaran'],
+            'sem' => $setting['semester_aktif']
+        ]);
         if ($check->fetch()) {
-            set_flash('error', 'Token tersebut sudah aktif. Gunakan nilai token yang berbeda.');
+            set_flash('error', 'Token tersebut sudah aktif. Gunakan 6 digit angka yang berbeda.');
             redirect('index.php?page=upload-token-management');
         }
 
@@ -78,13 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (:token, 'manual', :creator, :expires, :ta, :sem, :ip, :ua)
         ");
         $stmt->execute([
-            'token'   => $tokenValue,
+            'token' => $tokenValue,
             'creator' => current_user()['username'] ?? 'system',
             'expires' => $expiresAt,
-            'ta'      => $setting['tahun_ajaran'],
-            'sem'     => $setting['semester_aktif'],
-            'ip'      => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-            'ua'      => substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 255),
+            'ta' => $setting['tahun_ajaran'],
+            'sem' => $setting['semester_aktif'],
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'ua' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 255),
         ]);
         set_flash('success', "Token <strong>" . e($tokenValue) . "</strong> berhasil dibuat (berlaku $hours jam).");
         redirect('index.php?page=upload-token-management');
@@ -246,10 +249,10 @@ require dirname(__DIR__) . '/partials/header.php';
                             Nilai Token
                             <span class="text-secondary fw-normal small">(kosongkan untuk generate otomatis)</span>
                         </label>
-                        <input type="text" name="token_value" class="form-control font-monospace text-uppercase"
-                               maxlength="20" placeholder="Contoh: ABCD1234"
-                               oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
-                        <div class="form-text">4–20 karakter, huruf dan angka saja.</div>
+                           <input type="text" name="token_value" class="form-control font-monospace"
+                               inputmode="numeric" maxlength="6" placeholder="Contoh: 123456"
+                               oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)">
+                           <div class="form-text">Harus 6 digit angka.</div>
                     </div>
                     <div>
                         <label class="form-label fw-semibold">Masa Berlaku</label>
