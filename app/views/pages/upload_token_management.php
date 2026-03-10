@@ -28,8 +28,6 @@
  * ========================================================
  */
 
-require dirname(__DIR__) . '/partials/header.php';
-
 // Hanya admin/kurikulum yang bisa akses
 require_login();
 if (!in_array(current_user()['role'] ?? '', ['admin', 'kurikulum'])) {
@@ -139,6 +137,8 @@ $stmt->execute([
     'sem' => $setting['semester_aktif']
 ]);
 $tokenHistory = $stmt->fetchAll();
+
+require dirname(__DIR__) . '/partials/header.php';
 ?>
 
 <div class="row g-3">
