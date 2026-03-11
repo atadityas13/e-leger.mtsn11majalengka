@@ -686,11 +686,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        $skipMissingStudents = isset($_POST['skip_missing_students']) && $_POST['skip_missing_students'] == '1';
         if (count($missingStudents) > 0) {
             $previewMissing = implode(', ', array_slice($missingStudents, 0, 10));
             $suffix = count($missingStudents) > 10 ? ' dan lainnya' : '';
-            set_flash('error', 'Preview dibatalkan. Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '.');
-            redirect('index.php?page=data-nilai');
+            if ($skipMissingStudents) {
+                set_flash('warning', 'Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '. Siswa tersebut akan dilewati saat import.');
+            } else {
+                set_flash('error', 'Preview dibatalkan. Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '.');
+                redirect('index.php?page=data-nilai');
+            }
         }
 
         $stNilaiBySemester = db()->prepare('SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta');
@@ -1732,6 +1737,14 @@ require dirname(__DIR__) . '/partials/header.php';
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <button type="submit" class="btn btn-warning w-100">Preview RDM Per Kelas</button>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="skip_missing_students" name="skip_missing_students">
+                                    <label class="form-check-label" for="skip_missing_students">
+                                        Lewati siswa yang tidak terdaftar di aplikasi
+                                    </label>
+                                </div>
                             </div>
                         </form>
                     </div>
