@@ -3,14 +3,11 @@
  * ========================================================
  * TRACER MTSN 11 MAJALENGKA
  * ========================================================
- * 
- * Sistem Manajemen Data Nilai Siswa
+ * * Sistem Manajemen Data Nilai Siswa
  * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
- * 
- * File: Data Siswa Page
+ * * File: Data Siswa Page
  * Deskripsi: Halaman manajemen data siswa - CRUD, import Excel, dan modal nilai
- * 
- * @package    TRACER-MTSN11
+ * * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License
@@ -18,26 +15,22 @@
  * @since      2026-01-01
  * @created    2026-03-06
  * @modified   2026-03-06
- * 
- * Features:
+ * * Features:
  * - CRUD operations (Create, Read, Update, Delete)
  * - Import dari file Excel (.xlsx)
  * - Search realtime (Nama/NIS/NISN)
  * - Pagination (20/30/50/100/semua)
  * - Sorting clickable headers (Nama/Semester/Status)
  * - Modal view nilai per siswa (Rapor + UAM)
- * 
- * DISCLAIMER:
+ * * DISCLAIMER:
  * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
  * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
  * tanpa izin tertulis dari MTsN 11 Majalengka.
- * 
- * CONTACT:
+ * * CONTACT:
  * Website: https://mtsn11majalengka.sch.id
  * Email: mtsn11majalengka@gmail.com
  * Phone: (0233) 8319182
- * 
- * ========================================================
+ * * ========================================================
  */
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -725,15 +718,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Rapor
                 if ($nilaiAngka === null) {
-                    $stmt = db()->prepare('DELETE FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta');
-                    $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                    // Hapus tanpa mempedulikan tahun ajaran lama/baru
+                    $stmt = db()->prepare('DELETE FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id');
+                    $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
                 } else {
-                    $stmtCheck = db()->prepare('SELECT id FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta LIMIT 1');
-                    $stmtCheck->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                    $stmtCheck = db()->prepare('SELECT id FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id LIMIT 1');
+                    $stmtCheck->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
                     if ($stmtCheck->fetch()) {
-                        $stmt = db()->prepare('UPDATE nilai_rapor SET nilai_angka=:nilai WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta');
-                        $stmt->execute(['nilai' => $nilaiAngka, 'nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                        // Update tanpa merubah tahun ajaran lama
+                        $stmt = db()->prepare('UPDATE nilai_rapor SET nilai_angka=:nilai WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id');
+                        $stmt->execute(['nilai' => $nilaiAngka, 'nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
                     } else {
+                        // Insert gunakan tahun ajaran yang sedang aktif
                         $stmt = db()->prepare('INSERT INTO nilai_rapor (nisn, semester, mapel_id, tahun_ajaran, nilai_angka) VALUES (:nisn,:semester,:mapel_id,:ta,:nilai)');
                         $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran'], 'nilai' => $nilaiAngka]);
                     }
@@ -1176,7 +1172,6 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
 </div>
 
 <?php foreach ($siswa as $s): ?>
-<!-- Modal Detail Siswa -->
 <div class="modal fade" id="modalDetailSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -1240,7 +1235,6 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
     </div>
 </div>
 
-<!-- Modal Nilai Siswa -->
 <div class="modal fade" id="modalNilaiSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -1274,8 +1268,9 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
                     <?php for ($sem = 1; $sem <= 5; $sem++): 
-                        $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
-                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $setting['tahun_ajaran']]);
+                        // Hapus filter tahun_ajaran agar semua nilai sesuai semester dan NISN muncul
+                        $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, nr.tahun_ajaran, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem ORDER BY m.id');
+                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
                         $nilaiRapor = $stNilai->fetchAll();
                         
                         // Hitung rata-rata
@@ -1287,7 +1282,8 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                         $rataRata = $jumlahMapel > 0 ? $totalNilai / $jumlahMapel : 0;
                     ?>
                     <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
-                        <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($setting['tahun_ajaran']) ?></h6>
+                        <?php $ta_semester = count($nilaiRapor) > 0 ? $nilaiRapor[0]['tahun_ajaran'] : $setting['tahun_ajaran']; ?>
+                        <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($ta_semester) ?></h6>
                         <?php if (count($nilaiRapor) > 0): ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
@@ -1390,7 +1386,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                         $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
                             (SELECT AVG(nr.nilai_angka)
                              FROM nilai_rapor nr
-                             WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5 AND nr.tahun_ajaran=:ta) AS rata_rapor,
+                             WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5) AS rata_rapor,
                             (SELECT nu.nilai_angka
                              FROM nilai_uam nu
                              WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
@@ -1399,8 +1395,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                             ORDER BY m.id');
                         $stIjazah->execute([
                             'nisn_rapor' => $s['nisn'],
-                            'nisn_uam' => $s['nisn'],
-                            'ta' => $setting['tahun_ajaran'],
+                            'nisn_uam' => $s['nisn']
                         ]);
                         $nilaiIjazahRows = $stIjazah->fetchAll();
 
