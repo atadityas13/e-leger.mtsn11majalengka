@@ -1517,13 +1517,13 @@ require dirname(__DIR__) . '/partials/header.php';
                                         </form>
                                     </div>
                                 <?php else: ?>
-                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="if(confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.')) document.getElementById('formNonaktif<?= e($row['nisn']) ?>').submit();" title="Nonaktifkan">
-                                        <i class="bi bi-x-circle"></i>
-                                    </button>
-                                    <form id="formNonaktif<?= e($row['nisn']) ?>" method="post" class="d-none">
+                                    <form method="post" class="d-inline-block" data-confirm="Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan." data-confirm-title="Nonaktifkan Siswa">
                                         <?= csrf_input() ?>
                                         <input type="hidden" name="action" value="nonaktifkan_siswa">
                                         <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Nonaktifkan">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
                                     </form>
                                 <?php endif; ?>
                             </td>

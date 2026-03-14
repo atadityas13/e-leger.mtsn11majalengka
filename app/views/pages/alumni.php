@@ -186,7 +186,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="modal fade" id="modalBatalAngkatan" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <form method="post">
+            <form method="post" data-confirm="Apakah Anda benar-benar yakin membatalkan kelulusan angkatan ini?" data-confirm-title="Batalkan Kelulusan Angkatan">
                 <?= csrf_input('alumni') ?>
                 <input type="hidden" name="action" value="batal_angkatan">
                 <div class="modal-header">
@@ -207,7 +207,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Apakah Anda benar-benar yakin membatalkan kelulusan angkatan ini?');">Proses Pembatalan</button>
+                    <button type="submit" class="btn btn-danger">Proses Pembatalan</button>
                 </div>
             </form>
         </div>

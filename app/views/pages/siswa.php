@@ -997,13 +997,13 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                 <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNilaiSiswa<?= e($s['nisn']) ?>" title="Nilai">
                                     <i class="bi bi-card-list"></i>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Yakin hapus siswa <?= e($s['nama']) ?>?')) document.getElementById('formHapusSiswa<?= e($s['nisn']) ?>').submit();" title="Hapus">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="formHapusSiswa<?= e($s['nisn']) ?>" method="post" class="d-none">
+                                <form method="post" class="d-inline-block" data-confirm="Yakin hapus siswa <?= e($s['nama']) ?>?" data-confirm-title="Hapus Siswa">
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="nisn" value="<?= e($s['nisn']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>
@@ -1613,7 +1613,12 @@ document.addEventListener('click', function(e) {
         const changes = nilaiChanges[nisn] || [];
         
         if (changes.length === 0) {
-            alert('Tidak ada perubahan untuk disimpan.');
+            Swal.fire({
+                icon: 'info',
+                title: 'Informasi',
+                text: 'Tidak ada perubahan untuk disimpan.',
+                confirmButtonColor: '#10b981'
+            });
             return;
         }
         
@@ -1641,7 +1646,12 @@ document.addEventListener('click', function(e) {
                 setTimeout(() => location.reload(), 500);
             })
             .catch(err => {
-                alert('Gagal menyimpan perubahan: ' + err.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan perubahan: ' + err.message,
+                    confirmButtonColor: '#10b981'
+                });
                 console.error('Error:', err);
             });
     }
