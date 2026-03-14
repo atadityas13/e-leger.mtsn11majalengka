@@ -956,10 +956,10 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
         </div>
         <script>
             document.getElementById('perPageSelect').addEventListener('change', function() {
-                const url = new URL(window.location);
+                const url = new URL(window.location.href);
                 url.searchParams.set('per_page', this.value);
-                url.searchParams.delete('page');
-                window.location = url;
+                url.searchParams.delete('p'); // Reset ke halaman 1
+                window.location.href = url.toString();
             });
         </script>
 
@@ -1027,17 +1027,8 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                 </ul>
             </nav>
         <?php endif; ?>
-
-<script>
-document.getElementById('perPageSelect').addEventListener('change', function() {
-    const search = new URLSearchParams(window.location.search).get('search') || '';
-    const sortBy = new URLSearchParams(window.location.search).get('sort_by') || 'nama';
-    const sortDir = new URLSearchParams(window.location.search).get('sort_dir') || 'ASC';
-    const perPage = this.value;
-    window.location.href = `index.php?page=siswa&search=${encodeURIComponent(search)}&sort_by=${encodeURIComponent(sortBy)}&sort_dir=${encodeURIComponent(sortDir)}&per_page=${perPage}`;
-});
-</script>
-
+    </div>
+</div>
 <div class="modal fade" id="modalTambahSiswa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -1481,6 +1472,8 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
     </div>
 </div>
 
+<?php endforeach; ?>
+
 <script>
 // Track nilai awal dan perubahan pada input nilai
 const nilaiChanges = {};
@@ -1565,7 +1558,5 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
-
-<?php endforeach; ?>
 
 <?php require dirname(__DIR__) . '/partials/footer.php';
