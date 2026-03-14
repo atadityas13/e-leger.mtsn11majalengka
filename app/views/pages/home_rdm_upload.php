@@ -681,16 +681,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $skipMissingStudents = isset($_POST['skip_missing_students']) && $_POST['skip_missing_students'] == '1';
     if (count($missingStudents) > 0) {
         $previewMissing = implode(', ', array_slice($missingStudents, 0, 10));
         $suffix = count($missingStudents) > 10 ? ' dan lainnya' : '';
-        if ($skipMissingStudents) {
-            set_flash('warning', 'Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '. Siswa tersebut akan dilewati saat upload.');
-        } else {
-            set_flash('error', 'Upload dibatalkan. Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '. Silakan hubungi admin.');
-            redirect('index.php?page=home');
-        }
+        set_flash('error', 'Upload dibatalkan. Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '. Silakan pastikan semua siswa terdaftar terlebih dahulu.');
+        redirect('index.php?page=home');
     }
 
     $placeholdersNilaiCek = implode(',', array_fill(0, count($nisnList), '?'));
@@ -1028,14 +1023,7 @@ $isLoggedIn = current_user() !== null;
                                 </div>
                                 <div class="form-text">Pastikan file berasal dari ekspor leger RDM asli agar terbaca oleh sistem.</div>
                             </div>
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="1" id="skip_missing_students" name="skip_missing_students">
-                                    <label class="form-check-label" for="skip_missing_students">
-                                        Lewati siswa yang tidak terdaftar di aplikasi
-                                    </label>
-                                </div>
-                            </div>
+
                             <div class="col-12 d-grid mt-1">
                                 <button id="uploadSubmitBtn" type="submit" class="btn landing-upload-btn">
                                     <i class="bi bi-search me-1"></i> Preview Upload
